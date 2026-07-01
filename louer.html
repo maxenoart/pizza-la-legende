@@ -153,12 +153,14 @@
   </div>
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="assets/js/env.js" onerror="void 0"></script>
 <script src="assets/js/config.js"></script>
 <script src="assets/js/site.js"></script>
 <script>
-  // Demande de devis — envoi vers l'Edge Function 'event-request' si configurée,
-  // sinon repli sur un e-mail pré-rempli (mailto) pour ne jamais bloquer l'utilisateur.
+  // Demande de devis — enregistrée directement dans Supabase (table event_requests)
+  // si configuré ; sinon repli sur un e-mail pré-rempli (mailto), pour ne jamais
+  // bloquer l'utilisateur.
   (function () {
     var form = document.getElementById("event-form");
     if (!form) return;
@@ -166,7 +168,9 @@
     var errBox = document.getElementById("event-err");
     var btn = document.getElementById("event-submit");
     var cfg = (window.LEGENDE_CONFIG || {});
-    var fns = (cfg.supabase || {}).functionsUrl;
+    var sbcfg = cfg.supabase || {};
+    var client = (sbcfg.url && sbcfg.anonKey && window.supabase && window.supabase.createClient)
+      ? window.supabase.createClient(sbcfg.url, sbcfg.anonKey) : null;
 
     form.addEventListener("submit", function (e) {
       e.preventDefault();
@@ -190,11 +194,13 @@
         done();
       }
 
-      if (fns) {
-        fetch(fns + "/event-request", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) })
-          .then(function (r) { if (!r.ok) throw new Error(); return r.json(); })
-          .then(done)
-          .catch(function () { mailtoFallback(); });
+      if (client) {
+        client.from("event_requests").insert({
+          name: data.name, email: data.email, phone: data.phone || null,
+          event_type: data.eventType || null, event_date: data.date || null,
+          guests: data.guests ? Number(data.guests) : null,
+          place: data.place || null, message: data.message || null
+        }).then(function (r) { if (r.error) mailtoFallback(); else done(); });
       } else {
         mailtoFallback();
       }

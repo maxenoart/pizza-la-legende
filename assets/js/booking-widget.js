@@ -100,24 +100,45 @@
   };
 
   // ==== Adapter B — Supabase (Stufe 2, Echtbetrieb) ==========================
+  // Direkt-Insert über den publishable Key: die RLS erlaubt anonymes INSERT in
+  // `bookings` (aber kein Lesen fremder Buchungen). Re-Validierung derselben
+  // Engine im Browser gegen die belegten Slots. Keine Edge Function nötig.
+  // Automatische E-Mails lassen sich später über die Function `book` nachrüsten.
   function SupabaseAdapter(client, functionsUrl) {
-    return {
-      getConfig: function () { return client.rpc("get_booking_config").then(function (r) { return r.data; }); },
-      getBusy: function (date) {
-        return client.from("busy_slots").select("*").eq("booking_date", date).then(function (r) {
-          return (r.data || []).map(function (row) {
-            return { date: row.booking_date, start: String(row.start_time).slice(0, 5),
-              serviceId: row.service_id, locationId: row.location_id, partySize: row.party_size, status: row.status };
-          });
+    function loadConfig() { return client.rpc("get_booking_config").then(function (r) { return r.data; }); }
+    function loadBusy(date) {
+      return client.from("busy_slots").select("*").eq("booking_date", date).then(function (r) {
+        return (r.data || []).map(function (row) {
+          return { date: row.booking_date, start: String(row.start_time).slice(0, 5),
+            serviceId: row.service_id, locationId: row.location_id, partySize: row.party_size, status: row.status };
         });
-      },
+      });
+    }
+    return {
+      getConfig: loadConfig,
+      getBusy: loadBusy,
       createBooking: function (p) {
-        return fetch(functionsUrl + "/book", {
-          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(p)
-        }).then(function (res) {
-          return res.json().then(function (body) {
-            if (!res.ok || body.ok === false) throw new Error(body.message === "__TAKEN__" ? "__TAKEN__" : (body.message || "Error"));
-            return body.booking;
+        // 1) Config + belegte Slots frisch laden, 2) im Browser prüfen, 3) einfügen.
+        return loadConfig().then(function (config) {
+          return loadBusy(p.date).then(function (busy) {
+            var ok = E.isSlotAvailable(config, {
+              date: p.date, serviceId: p.serviceId, locationId: p.locationId,
+              partySize: p.partySize, start: p.start, existingBookings: busy
+            });
+            if (!ok) throw new Error("__TAKEN__");
+            var auto = !(config.booking && config.booking.autoConfirm === false);
+            return client.from("bookings").insert({
+              service_id: p.serviceId, location_id: p.locationId || null,
+              customer_name: p.customerName, customer_email: p.customerEmail, customer_phone: p.customerPhone || null,
+              booking_date: p.date, start_time: p.start, end_time: p.end,
+              party_size: p.partySize || 0, items: p.items || null, notes: p.notes || null,
+              status: auto ? "confirmed" : "pending"
+            }).then(function (res) {
+              if (res.error) throw new Error(res.error.message || "Enregistrement impossible.");
+              // anon darf Buchungen nicht zurücklesen → lokales Objekt für die Bestätigung.
+              return { status: auto ? "confirmed" : "pending", date: p.date, start: p.start,
+                locationId: p.locationId, items: p.items, partySize: p.partySize };
+            });
           });
         });
       }

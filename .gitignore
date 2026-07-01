@@ -1,5 +1,7 @@
-# Configuration locale (contient l'URL + clé anon du projet Supabase)
-assets/js/env.js
+# env.js wird bewusst MITVERÖFFENTLICHT: es enthält nur die öffentliche
+# Supabase-URL + den publishable Key (durch RLS geschützt) und muss von
+# GitHub Pages ausgeliefert werden, damit die Live-Seite Supabase erreicht.
+# NIEMALS den secret / service_role Key in dieses File schreiben.
 
 # Secrets serveur — ne jamais committer
 .env
