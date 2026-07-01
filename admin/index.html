@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Admin — La Légende</title>
+<meta name="robots" content="noindex, nofollow" />
+<meta name="theme-color" content="#261E17" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+<!--
+  Admin La Légende.
+  • Sans env.js  → mode démo (localStorage), mot de passe : legende
+  • Avec env.js  → mode live : login opérateur Supabase (Auth), lecture/écriture.
+  Ordre des scripts important : supabase-js, env.js, config.js, moteur, widget, admin.
+-->
+<div id="admin"></div>
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../assets/js/env.js" onerror="void 0"></script>
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/availability.js"></script>
+<script src="../assets/js/booking-widget.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>

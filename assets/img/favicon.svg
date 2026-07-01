@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="La Légende">
+  <rect width="64" height="64" rx="14" fill="#261E17"/>
+  <!-- part de pizza -->
+  <path d="M32 12 L50 46 Q32 54 14 46 Z" fill="#F6F1E9"/>
+  <path d="M32 12 L50 46 Q32 54 14 46 Z" fill="none" stroke="#594736" stroke-width="0"/>
+  <!-- croûte -->
+  <path d="M14 46 Q32 54 50 46" fill="none" stroke="#594736" stroke-width="4" stroke-linecap="round"/>
+  <!-- garnitures -->
+  <circle cx="27" cy="30" r="3.1" fill="#E2073B"/>
+  <circle cx="37" cy="34" r="3.1" fill="#E2073B"/>
+  <circle cx="30" cy="41" r="2.8" fill="#E2073B"/>
+  <circle cx="41" cy="42" r="2.4" fill="#4f6b1e"/>
+  <circle cx="24" cy="39" r="2.2" fill="#4f6b1e"/>
+</svg>

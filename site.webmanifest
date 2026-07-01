@@ -1,0 +1,13 @@
+{
+  "name": "La Légende — Food Truck",
+  "short_name": "La Légende",
+  "description": "Précommandez votre pizza au feu de bois et retirez-la au camion.",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#261E17",
+  "theme_color": "#261E17",
+  "lang": "fr",
+  "icons": [
+    { "src": "assets/img/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

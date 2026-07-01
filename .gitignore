@@ -1,0 +1,14 @@
+# Configuration locale (contient l'URL + clé anon du projet Supabase)
+assets/js/env.js
+
+# Secrets serveur — ne jamais committer
+.env
+.env.*
+supabase/.env
+
+# Système
+.DS_Store
+Thumbs.db
+
+# Dépendances / build éventuels
+node_modules/
