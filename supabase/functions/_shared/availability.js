@@ -232,6 +232,25 @@
     return computeAvailableSlots(config, opts).some((s) => s.start === wanted);
   }
 
+  // Vollständiges Slot-Raster eines Tages (ALLE Sessions, unabhängig von
+  // bestehenden Buchungen). Für die Betreiber-Ansicht: freie + belegte Slots.
+  function daySlots(config, opts) {
+    const o = opts || {};
+    const dateStr = ymd(o.date);
+    const svc = svcOf(config, o.serviceId) || {};
+    const b = config.booking || {};
+    const duration = svc.durationMinutes || b.defaultDurationMinutes || 15;
+    const step = b.slotGranularityMinutes || duration;
+    const intervals = workingIntervals(config, dateStr, o.staffId, o.locationId);
+    const out = [];
+    for (const iv of intervals) {
+      for (let s = iv.s; s + duration <= iv.e; s += step) {
+        out.push({ start: toHHMM(s), end: toHHMM(s + duration), startISO: `${dateStr}T${toHHMM(s)}:00` });
+      }
+    }
+    return out;
+  }
+
   // Nächste N Tage mit mindestens einem freien Slot (für Kalender-Punkte).
   function daysWithAvailability(config, opts) {
     const o = opts || {}, now = o.now || new Date();
@@ -250,9 +269,10 @@
     computeAvailableSlots,
     isSlotAvailable,
     daysWithAvailability,
+    daySlots,
     workingIntervals,
     bookingSpan,
     _util: { toMin, toHHMM, ymd, weekdayOf, subtract, qtyOf },
-    version: "1.1.0-legende",
+    version: "1.2.0-legende",
   };
 });

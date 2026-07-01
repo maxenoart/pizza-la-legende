@@ -70,3 +70,48 @@ body { margin: 0; font-family: var(--sans); color: var(--dark); background: var(
 #toast { position: fixed; bottom: 92px; left: 50%; transform: translateX(-50%) translateY(20px); opacity: 0;
   background: var(--dark); color: #fff; padding: 11px 18px; border-radius: 10px; font-size: 14px; transition: .2s; pointer-events: none; z-index: 30; }
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ==== Bestell-Panel (kompakte Session-Liste) ============================== */
+.oc__head { position: sticky; top: 52px; z-index: 4; background: var(--dark); color: #fff; margin: -20px -20px 14px; padding: 14px 20px; border-radius: 0 0 14px 14px; }
+.oc__headtop { display: flex; gap: 8px; }
+.oc__date, .oc__sel { flex: 1 1 auto; background: rgba(255,255,255,.08); color: #fff; border: 1px solid rgba(255,255,255,.2); border-radius: 9px; padding: 9px 11px; font: inherit; font-size: 14px; }
+.oc__date { max-width: 150px; }
+.oc__sel option { color: #261E17; }
+.oc__headsub { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-top: 10px; }
+.oc__place { font-family: var(--serif); font-size: 18px; }
+.oc__spot { font-family: var(--sans); font-size: 12px; color: #bcae9f; }
+.oc__hrs { font-size: 14px; color: #e4d9cc; white-space: nowrap; }
+
+.oc__list { display: grid; gap: 8px; }
+.oc__row { display: grid; grid-template-columns: 46px 1fr auto; align-items: center; gap: 12px;
+  border: 1px solid var(--line); border-radius: 12px; padding: 9px 11px; background: #fff; }
+.oc__thumb { width: 46px; height: 46px; border-radius: 10px; object-fit: cover; background: var(--bg); flex: 0 0 auto; }
+.oc__mid { min-width: 0; display: grid; gap: 2px; }
+.oc__line1 { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
+.oc__time { font-size: 17px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.oc__name { font-weight: 600; font-size: 15px; }
+.oc__phone { color: var(--warm); font-size: 13px; text-decoration: none; }
+.oc__phone:hover { text-decoration: underline; }
+.oc__items { font-size: 14px; color: var(--warm); line-height: 1.35; overflow-wrap: anywhere; }
+.oc__meta { font-size: 11px; color: #b6a89a; letter-spacing: .02em; }
+.oc__note { font-size: 12.5px; color: var(--muted); font-style: italic; }
+
+.oc__act { display: flex; gap: 7px; flex: 0 0 auto; }
+.oc__done, .oc__no { width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line); background: #fff; font-size: 18px; cursor: pointer; line-height: 1; }
+.oc__done { color: var(--ok); border-color: #cfe6d7; }
+.oc__done:hover { background: #e7f2ea; }
+.oc__no { color: var(--accent); border-color: #f0d6dd; }
+.oc__no:hover { background: #f6e7ea; }
+
+.oc__row--empty { grid-template-columns: auto 1fr auto; background: #fbf9f5; border-style: dashed; padding: 8px 11px; }
+.oc__free { font-size: 13px; color: var(--muted); }
+.oc__pausebtn { background: #f3efe9; border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; font: inherit; font-size: 13px; cursor: pointer; color: var(--warm); }
+.oc__pausebtn:hover { border-color: var(--warm); }
+
+.oc__row--pause { grid-template-columns: auto 1fr auto; background: #f7f3ee; }
+.oc__pausetag { font-size: 14px; color: var(--warm); font-weight: 600; }
+
+.oc__donehead { margin: 22px 0 8px; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.oc__row--done { grid-template-columns: 40px 1fr auto; opacity: .62; padding: 7px 11px; }
+.oc__row--done .oc__thumb { width: 40px; height: 40px; }
+.oc__doneflag { color: var(--ok); font-size: 18px; }

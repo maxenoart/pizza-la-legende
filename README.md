@@ -70,12 +70,16 @@ Die Vorbestellung funktioniert dann bereits (Demo). Für echte Bestellungen → 
 supabase/schema.sql
 supabase/seed.sql
 ```
+> Wurde die DB schon vor der Session-Umstellung aufgesetzt: einmalig zusätzlich
+> `supabase/migration-sessions.sql` ausführen (stellt Dauer/Übergangszeit/Slot-
+> Abstand aufs Session-Modell um).
 
 **c) Registrierung deaktivieren** (nur der Betreiber soll Admin sein):
 Authentication → Providers → Email → **„Allow new users to sign up" ausschalten**.
 Dann unter Authentication → Users den Betreiber-Account (E-Mail + Passwort) manuell anlegen.
 
-**d) Edge Functions deployen** (Supabase CLI):
+**d) Edge Functions deployen — OPTIONAL** (nur für automatische E-Mails; für die
+reine Bestellannahme nicht nötig, siehe „Buchungslogik"). Supabase CLI:
 ```bash
 supabase functions deploy book --no-verify-jwt
 supabase functions deploy event-request --no-verify-jwt
@@ -109,19 +113,31 @@ Ab jetzt laufen Vorbestellung, Kapazitätsprüfung, E-Mails und der Admin-Login 
 ## Admin
 
 `/admin/` — **Demo-Passwort:** `legende` · **Live:** Supabase-Login des Betreibers.
-Verwaltet: Bestellungen (bestätigen/ablehnen/stornieren), Event-Anfragen, Karte &
-Preise, Tournée-Zeiten, Ofen-Kapazität, Module.
+
+- **Commandes** — kompakte Session-Liste des Tages/Standorts (Kopf zeigt Tag/Ort/
+  Service, midi/soir je nach Uhrzeit). Jede Zeile: Foto der 1. Pizza, Name,
+  Telefon, Bestellung und Abholzeit; rechts **✓ Terminée** und **✕ Non venu**.
+  Freie Sessions sind sichtbar und lassen sich als **Pause** blockieren. Unten die
+  letzten 3 erledigten Bestellungen.
+- **Événements** — Devis-Anfragen. **Carte** — Preise/Namen. **Tournée** — Zeiten
+  je Standort. **Réglages** — Session-Dauer, Übergangszeit, Vorlauf, Horizont.
 
 ---
 
 ## Buchungslogik in Kürze
 
-Muster „Bestellung mit Zeitfenster". Der Kunde wählt **Standort → Bestellung →
-Tag → Abholfenster**. Jede Tournée-Station hat eigene Öffnungszeiten; pro
-15-Min-Fenster gilt eine **Ofen-Kapazität** (Pizzen). Verfügbarkeit wird nie
-gespeichert, sondern live berechnet und vor jedem Insert serverseitig
-re-validiert (Race-Condition-Schutz). Standorte am selben Abend (Péry/Grandval)
-haben getrennte Kapazität. Bezahlt wird vor Ort (cash/TWINT) — kein Online-Payment.
+Muster „Bestellung mit Zeitfenster", **Session-Modell**. Der Kunde wählt
+**Standort → Bestellung → Tag → Abholzeit**. Jede Bestellung belegt eine
+**Session** (Dauer + kurze Übergangszeit, im Admin einstellbar); die angebotenen
+Abholzeiten sind genau in diesem Abstand gelistet. Verfügbarkeit wird nie
+gespeichert, sondern live aus Öffnungszeiten minus belegte Sessions berechnet.
+Standorte am selben Abend (Péry/Grandval) sind getrennt. Bezahlt wird vor Ort
+(cash/TWINT) — kein Online-Payment.
+
+Bestellungen werden im aktuellen Setup **direkt in Supabase** gespeichert
+(publishable Key + RLS `public insert`), mit Re-Validierung im Browser. Edge
+Functions sind dafür **nicht nötig** — sie sind optional und nur für automatische
+Bestätigungs-/Erinnerungs-E-Mails (Resend) gedacht.
 
 ---
 

@@ -55,11 +55,11 @@ create table if not exists locations (
 create table if not exists services (
   id                text primary key,
   name              text not null,
-  duration_minutes  integer not null default 15,
+  duration_minutes  integer not null default 10,  -- Dauer einer Session
   buffer_before_min integer default 0,
-  buffer_after_min  integer default 0,
+  buffer_after_min  integer default 5,            -- Übergangszeit zwischen Sessions
   price             numeric,
-  capacity          integer default 8,    -- Ofen-Kapazität je Zeitfenster
+  capacity          integer default 1,            -- 1 = eine Session pro Slot
   active            boolean default true,
   sort              integer default 0
 );

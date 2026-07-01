@@ -56,8 +56,10 @@
       onlinePayment: false,       // bewusst aus — bezahlt wird vor Ort (cash/TWINT)
       customForms: false
     },
+    // Session-Modell: jede Bestellung = ein Zeitfenster (Session). Die Abholzeiten
+    // des Kunden sind im Abstand (Session-Dauer + Übergangszeit) gelistet.
     booking: {
-      slotGranularityMinutes: 15, // Abholfenster in 15-Min-Schritten
+      slotGranularityMinutes: 15, // = Session-Dauer + Übergangszeit (auto im Admin)
       leadTimeMinutes: 45,        // frühestens 45 Min im Voraus (Vorbereitung)
       bookingHorizonDays: 14,     // bis 2 Wochen im Voraus vorbestellbar
       cutoffMinutesBeforeSlot: 0,
@@ -65,10 +67,12 @@
       autoConfirm: true
     },
 
-    // Eine Leistung: die Bestellung zur Abholung. capacity = Pizzen/Ofen pro Fenster.
-    // (Betreiber-Wert, im Admin unter „Capacité par créneau" anpassbar.)
+    // Eine Leistung: die Bestellung zur Abholung.
+    //   durationMinutes    = Session-Dauer (Zeit, eine Bestellung zu machen)
+    //   bufferAfterMinutes = Übergangszeit zwischen Sessions (aufräumen etc.)
+    // Beide im Admin unter „Réglages" einstellbar. capacity 1 = eine Session/Slot.
     services: [
-      { id: "commande", name: "Commande à retirer", durationMinutes: 15, capacity: 8, price: null }
+      { id: "commande", name: "Commande à retirer", durationMinutes: 10, bufferAfterMinutes: 5, capacity: 1, price: null }
     ],
 
     // --- La tournée : Standorte mit eigenen Öffnungszeiten -------------------

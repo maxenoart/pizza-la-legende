@@ -12,10 +12,15 @@ on conflict (id) do update set
   business_name = excluded.business_name,
   menu_price_from = excluded.menu_price_from;
 
--- --- Leistung : Abholbestellung (capacity = Pizzen je 15-Min-Fenster) -------
-insert into services (id, name, duration_minutes, capacity, sort) values
-  ('commande', 'Commande à retirer', 15, 8, 1)
-on conflict (id) do update set name = excluded.name, capacity = excluded.capacity;
+-- --- Leistung : Abholbestellung (Session-Modell) ----------------------------
+-- duration_minutes = Dauer einer Session (Bestellung machen)
+-- buffer_after_min = Übergangszeit zwischen Sessions (aufräumen etc.)
+-- Beide im Admin unter „Réglages" einstellbar.
+insert into services (id, name, duration_minutes, buffer_after_min, capacity, sort) values
+  ('commande', 'Commande à retirer', 10, 5, 1, 1)
+on conflict (id) do update set
+  name = excluded.name, duration_minutes = excluded.duration_minutes,
+  buffer_after_min = excluded.buffer_after_min, capacity = excluded.capacity;
 
 -- --- Tournée-Standorte ------------------------------------------------------
 insert into locations (id, name, place, service, phone, weekday_label_fr, weekday_label_de, sort) values
