@@ -182,5 +182,21 @@ console.log("14) Kapazität voll → Slot komplett belegt");
   check("18:15 weg (voll), 18:30 noch frei", !s.includes("18:15") && s.includes("18:30"));
 }
 
+console.log("15) slotPerItem: eine Bestellung belegt (Pizzen × Dauer) Folge-Slots");
+{
+  function pi() {
+    return { features: { multiLocation: false }, booking: { slotGranularityMinutes: 10, slotPerItem: true, leadTimeMinutes: 0 },
+      hours: { [WD]: [{ start: "18:00", end: "19:00" }] }, services: [{ id: "cmd", name: "Cmd", durationMinutes: 10 }], closures: [] };
+  }
+  const base = starts(E.computeAvailableSlots(pi(), { date: DATE, serviceId: "cmd", partySize: 1, now: PAST }));
+  check("1-Pizza-Raster 18:00–18:50 (6 Slots)", eq(base, ["18:00", "18:10", "18:20", "18:30", "18:40", "18:50"]));
+  const bk = [{ id: "o1", date: DATE, start: "18:10", serviceId: "cmd", partySize: 2, status: "confirmed" }];
+  const one = starts(E.computeAvailableSlots(pi(), { date: DATE, serviceId: "cmd", partySize: 1, existingBookings: bk, now: PAST }));
+  check("2-Pizza-Buchung 18:10 blockt 18:10 & 18:20", !one.includes("18:10") && !one.includes("18:20"));
+  check("18:00 und 18:30 bleiben frei", one.includes("18:00") && one.includes("18:30"));
+  const three = starts(E.computeAvailableSlots(pi(), { date: DATE, serviceId: "cmd", partySize: 3, existingBookings: bk, now: PAST }));
+  check("3-Pizza-Bestellung passt nur ab 18:30", eq(three, ["18:30"]));
+}
+
 console.log(`\nErgebnis: ${pass} bestanden, ${fail} fehlgeschlagen.`);
 process.exit(fail === 0 ? 0 : 1);

@@ -56,10 +56,13 @@
       onlinePayment: false,       // bewusst aus — bezahlt wird vor Ort (cash/TWINT)
       customForms: false
     },
-    // Session-Modell: jede Bestellung = ein Zeitfenster (Session). Die Abholzeiten
-    // des Kunden sind im Abstand (Session-Dauer + Übergangszeit) gelistet.
+    // Slot-pro-Pizza-Modell: ein Slot = eine Pizza. Eine Bestellung mit N Pizzen
+    // belegt N aufeinanderfolgende Slots. Abholzeiten werden von jetzt an gelistet
+    // (frei = wählbar, belegt = ausgegraut).
     booking: {
-      slotGranularityMinutes: 15, // = Session-Dauer + Übergangszeit (auto im Admin)
+      slotPerItem: true,          // eine Pizza pro Slot, Mehrfachbestellung = Folge-Slots
+      sameDayOnly: false,         // true = Kunde bestellt nur für heute (kein Tag-Schritt)
+      slotGranularityMinutes: 5,  // = Dauer pro Pizza (auto im Admin)
       leadTimeMinutes: 45,        // frühestens 45 Min im Voraus (Vorbereitung)
       bookingHorizonDays: 14,     // bis 2 Wochen im Voraus vorbestellbar
       cutoffMinutesBeforeSlot: 0,
@@ -68,11 +71,11 @@
     },
 
     // Eine Leistung: die Bestellung zur Abholung.
-    //   durationMinutes    = Session-Dauer (Zeit, eine Bestellung zu machen)
-    //   bufferAfterMinutes = Übergangszeit zwischen Sessions (aufräumen etc.)
-    // Beide im Admin unter „Réglages" einstellbar. capacity 1 = eine Session/Slot.
+    //   durationMinutes    = Dauer pro Pizza (ein Slot)
+    //   bufferAfterMinutes = Übergangs-/Aufräumzeit am Ende einer Bestellung
+    // Beide im Admin unter „Réglages" einstellbar.
     services: [
-      { id: "commande", name: "Commande à retirer", durationMinutes: 10, bufferAfterMinutes: 5, capacity: 1, price: null }
+      { id: "commande", name: "Commande à retirer", durationMinutes: 5, bufferAfterMinutes: 0, capacity: 1, price: null }
     ],
 
     // --- La tournée : Standorte mit eigenen Öffnungszeiten -------------------

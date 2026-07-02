@@ -123,9 +123,15 @@
   }
 
   // Belegte Spanne einer bestehenden Buchung inkl. Puffer (Minuten).
+  // slotPerItem-Modus: eine Bestellung belegt (Anzahl Pizzen × Dauer/Pizza) Slots.
   function bookingSpan(config, b) {
     const svc = b.serviceId ? svcOf(config, b.serviceId) : null;
-    const dur = b.durationMinutes || (svc && svc.durationMinutes) || (b.end ? toMin(b.end) - toMin(b.start) : 0);
+    const bk = (config && config.booking) || {};
+    const perItem = (svc && svc.durationMinutes) || 0;
+    let dur = b.durationMinutes;
+    if (dur == null) {
+      dur = bk.slotPerItem ? perItem * Math.max(1, qtyOf(b)) : (perItem || (b.end ? toMin(b.end) - toMin(b.start) : 0));
+    }
     const bef = b.bufferBefore != null ? b.bufferBefore : (svc && svc.bufferBeforeMinutes) || 0;
     const aft = b.bufferAfter != null ? b.bufferAfter : (svc && svc.bufferAfterMinutes) || 0;
     const s = toMin(b.start);
@@ -162,12 +168,15 @@
     const svc = svcOf(config, o.serviceId) || {};
     const b = config.booking || {};
 
-    const duration = svc.durationMinutes || b.defaultDurationMinutes || 30;
+    const perItem = svc.durationMinutes || b.defaultDurationMinutes || 30;
+    const need = o.partySize != null ? o.partySize : 1;
+    const slotPerItem = !!b.slotPerItem;
+    // slotPerItem: N Pizzen belegen N aufeinanderfolgende Slots (Dauer = N × Dauer/Pizza).
+    const duration = slotPerItem ? perItem * Math.max(1, need) : perItem;
     const bufBefore = svc.bufferBeforeMinutes || 0;
     const bufAfter = svc.bufferAfterMinutes || 0;
-    const step = b.slotGranularityMinutes || 15;
-    const capacity = svc.capacity || 1;
-    const need = o.partySize != null ? o.partySize : 1;
+    const step = b.slotGranularityMinutes || perItem;
+    const capacity = slotPerItem ? 1 : (svc.capacity || 1);
 
     // Horizont: nicht weiter als N Tage im Voraus buchbar.
     if (b.bookingHorizonDays != null) {
@@ -273,6 +282,6 @@
     workingIntervals,
     bookingSpan,
     _util: { toMin, toHHMM, ymd, weekdayOf, subtract, qtyOf },
-    version: "1.2.0-legende",
+    version: "1.3.0-legende",
   };
 });

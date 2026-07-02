@@ -97,6 +97,7 @@
       locId: b.location_id || b.locationId,
       items: b.items || [], name: b.customer_name || b.customerName,
       email: b.customer_email || b.customerEmail, phone: b.customer_phone || b.customerPhone,
+      qty: (b.party_size != null ? b.party_size : b.partySize) || 0,
       notes: b.notes, status: b.status, pause: (b.notes === PAUSE)
     };
   }
@@ -199,20 +200,29 @@
       list.innerHTML = "";
       var mine = all.filter(function (b) { return b.date === ctx.date && b.locId === ctx.locId; });
       var active = mine.filter(function (b) { return b.status === "pending" || b.status === "confirmed"; });
-      var byTime = {}; active.forEach(function (b) { byTime[b.time] = b; });
 
       var grid = (E ? E.daySlots(config, { date: ctx.date, serviceId: (config.services || [{}])[0].id, locationId: ctx.locId }) : []).map(function (s) { return s.start; });
+
+      // Belegung: eine Bestellung mit N Pizzen belegt N aufeinanderfolgende Slots.
+      var owner = {}, cont = {};
+      active.forEach(function (b) {
+        var span = b.pause ? 1 : Math.max(1, b.qty || 1);
+        owner[b.time] = b;
+        var idx = grid.indexOf(b.time);
+        if (idx >= 0) for (var k = 1; k < span; k++) { var tt = grid[idx + k]; if (tt && !owner[tt]) cont[tt] = b; }
+      });
+
       var times = grid.slice();
-      Object.keys(byTime).forEach(function (t) { if (times.indexOf(t) < 0) times.push(t); });
+      Object.keys(owner).forEach(function (t) { if (times.indexOf(t) < 0) times.push(t); });
       times.sort();
 
       if (!times.length) { list.appendChild(H("p", { class: "ad__muted" }, ["Pas de service à cette étape ce jour-là."])); }
       var dayShort = WD[wdOf(ctx.date)];
       times.forEach(function (t) {
-        var b = byTime[t];
-        if (!b) return list.appendChild(emptyRow(t));
-        if (b.pause) return list.appendChild(pauseRow(b));
-        list.appendChild(orderRow(b, dayShort, cur));
+        var b = owner[t];
+        if (b) return list.appendChild(b.pause ? pauseRow(b) : orderRow(b, dayShort, cur));
+        if (cont[t]) return list.appendChild(contRow(t));
+        list.appendChild(emptyRow(t));
       });
 
       // Letzte 3 erledigte
@@ -260,6 +270,12 @@
         H("b", { class: "oc__time" }, [b.time]),
         H("span", { class: "oc__pausetag" }, ["⏸ Pause"]),
         H("button", { class: "oc__no", title: "Retirer la pause", onclick: function () { setStatus(b.id, "cancelled").then(render); } }, ["✕"])
+      ]);
+    }
+    function contRow(t) {
+      return H("div", { class: "oc__row oc__row--cont" }, [
+        H("b", { class: "oc__time" }, [t]),
+        H("span", { class: "oc__conttag" }, ["⟶ même commande"])
       ]);
     }
   }
@@ -340,13 +356,18 @@
     var svc = (config.services || [{}])[0];
     var b = config.booking = config.booking || {};
 
-    v.appendChild(H("h2", {}, ["Durée d'une session"]));
-    v.appendChild(H("p", { class: "ad__muted" }, ["Temps pour préparer une commande. Les créneaux proposés au client sont espacés de : durée + transition."]));
-    var dur = H("input", { class: "ad__in ad__in--s", type: "number", min: "1", value: svc.durationMinutes != null ? svc.durationMinutes : 10 });
-    var tr = H("input", { class: "ad__in ad__in--s", type: "number", min: "0", value: svc.bufferAfterMinutes != null ? svc.bufferAfterMinutes : 5 });
+    function saveBooking() {
+      if (MODE === "supabase") sb.from("settings").update({ booking: b }).eq("id", true).then(function () { toast("Enregistré"); });
+      else { saveLocalConfig(); toast("Enregistré"); }
+    }
+
+    v.appendChild(H("h2", {}, ["Durée par pizza"]));
+    v.appendChild(H("p", { class: "ad__muted" }, ["Temps pour préparer une pizza = un créneau. Une commande de plusieurs pizzas occupe autant de créneaux qui se suivent."]));
+    var dur = H("input", { class: "ad__in ad__in--s", type: "number", min: "1", value: svc.durationMinutes != null ? svc.durationMinutes : 6 });
+    var tr = H("input", { class: "ad__in ad__in--s", type: "number", min: "0", value: svc.bufferAfterMinutes != null ? svc.bufferAfterMinutes : 0 });
     function saveSession() {
       var d = Number(dur.value) || 1, t = Number(tr.value) || 0;
-      svc.durationMinutes = d; svc.bufferAfterMinutes = t; b.slotGranularityMinutes = d + t;
+      svc.durationMinutes = d; svc.bufferAfterMinutes = t; b.slotGranularityMinutes = d;
       if (MODE === "supabase") {
         sb.from("services").update({ duration_minutes: d, buffer_after_min: t }).eq("id", svc.id).then(function () {
           sb.from("settings").update({ booking: b }).eq("id", true).then(function () { toast("Enregistré"); });
@@ -354,8 +375,15 @@
       } else { saveLocalConfig(); toast("Enregistré"); }
     }
     dur.addEventListener("change", saveSession); tr.addEventListener("change", saveSession);
-    v.appendChild(H("label", { class: "ad__row" }, [H("span", { class: "ad__wd" }, ["Durée session (min)"]), dur]));
-    v.appendChild(H("label", { class: "ad__row" }, [H("span", { class: "ad__wd" }, ["Transition (min)"]), tr]));
+    v.appendChild(H("label", { class: "ad__row" }, [H("span", { class: "ad__wd" }, ["Durée par pizza (min)"]), dur]));
+    v.appendChild(H("label", { class: "ad__row" }, [H("span", { class: "ad__wd" }, ["Transition / nettoyage (min)"]), tr]));
+
+    v.appendChild(H("h2", { class: "ad__mt" }, ["Parcours client"]));
+    v.appendChild(H("label", { class: "ad__row ad__toggle" }, [
+      H("span", {}, ["Commander uniquement pour aujourd'hui"]),
+      toggle(!!b.sameDayOnly, function (on) { b.sameDayOnly = on; saveBooking(); })
+    ]));
+    v.appendChild(H("p", { class: "ad__muted" }, ["Activé : le client ne choisit pas le jour, la commande est pour le jour même (une étape de moins)."]));
 
     v.appendChild(H("h2", { class: "ad__mt" }, ["Règles de commande"]));
     numRow("Délai mini avant retrait (min)", "leadTimeMinutes");
@@ -363,13 +391,15 @@
 
     function numRow(label, key) {
       var inp = H("input", { class: "ad__in ad__in--s", type: "number", value: b[key] != null ? b[key] : "" });
-      inp.addEventListener("change", function () {
-        b[key] = inp.value === "" ? 0 : Number(inp.value);
-        if (MODE === "supabase") sb.from("settings").update({ booking: b }).eq("id", true).then(function () { toast("Enregistré"); });
-        else { saveLocalConfig(); toast("Enregistré"); }
-      });
+      inp.addEventListener("change", function () { b[key] = inp.value === "" ? 0 : Number(inp.value); saveBooking(); });
       v.appendChild(H("label", { class: "ad__row" }, [H("span", { class: "ad__wd" }, [label]), inp]));
     }
+  }
+
+  function toggle(on, cb) {
+    var t = H("button", { class: "ad__sw" + (on ? " is-on" : "") }, [H("span", { class: "ad__swdot" })]);
+    t.addEventListener("click", function () { on = !on; t.classList.toggle("is-on", on); cb(on); });
+    return t;
   }
 
   // ---- Boot ----------------------------------------------------------------

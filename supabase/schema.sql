@@ -32,7 +32,8 @@ create table if not exists settings (
     "onlinePayment": false, "customForms": false
   }'::jsonb,
   booking jsonb default '{
-    "slotGranularityMinutes": 15, "leadTimeMinutes": 45, "bookingHorizonDays": 14,
+    "slotPerItem": true, "sameDayOnly": false,
+    "slotGranularityMinutes": 5, "leadTimeMinutes": 45, "bookingHorizonDays": 14,
     "cutoffMinutesBeforeSlot": 0, "maxBookingsPerDay": null, "autoConfirm": true
   }'::jsonb,
   updated_at timestamptz default now()
@@ -55,11 +56,11 @@ create table if not exists locations (
 create table if not exists services (
   id                text primary key,
   name              text not null,
-  duration_minutes  integer not null default 10,  -- Dauer einer Session
+  duration_minutes  integer not null default 5,   -- Dauer pro Pizza (= ein Slot)
   buffer_before_min integer default 0,
-  buffer_after_min  integer default 5,            -- Übergangszeit zwischen Sessions
+  buffer_after_min  integer default 0,            -- Übergangs-/Aufräumzeit je Bestellung
   price             numeric,
-  capacity          integer default 1,            -- 1 = eine Session pro Slot
+  capacity          integer default 1,            -- (slotPerItem-Modus: 1)
   active            boolean default true,
   sort              integer default 0
 );

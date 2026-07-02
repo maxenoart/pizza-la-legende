@@ -43,7 +43,18 @@
 .bce__optcol { display: grid; gap: 3px; }
 .bce__optname { font-size: 17px; font-weight: 600; }
 .bce__optplace { font-size: 13px; color: var(--bce-muted); }
-.bce__optmeta { color: var(--bce-warm); font-size: 13px; text-align: right; white-space: nowrap; }
+.bce__optmeta { color: var(--bce-warm); font-size: 13px; text-align: right; white-space: nowrap; display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+.bce__opt.is-today { border-color: var(--bce-warm); }
+.bce__opttoday { background: var(--bce-accent); color: #fff; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+
+/* Uhrzeiten als vertikale Liste (frei / belegt / vergangen) */
+.bce__times { display: flex; flex-direction: column; gap: 8px; max-height: 54vh; overflow-y: auto; padding-right: 4px; -webkit-overflow-scrolling: touch; }
+.bce__tslot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border: 1px solid var(--bce-line); border-radius: 10px; background: #fff; font: inherit; text-align: left; width: 100%; }
+.bce__tslot.is-free { cursor: pointer; transition: border-color .15s, background .15s, transform .1s; }
+.bce__tslot.is-free:hover { border-color: var(--bce-warm); background: var(--bce-cream); transform: translateY(-1px); }
+.bce__ttime { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.bce__tslot.is-taken, .bce__tslot.is-past { opacity: .45; background: #f4efe9; color: var(--bce-muted); }
+.bce__tlabel { font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
 
 /* Bestellung */
 .bce__order { display: grid; gap: 4px; max-height: 52vh; overflow-y: auto; padding-right: 4px; -webkit-overflow-scrolling: touch; }

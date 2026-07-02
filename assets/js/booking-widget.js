@@ -20,11 +20,13 @@
       step: "Étape", of: "sur",
       back: "← Retour",
       loc_title: "Où récupérez-vous ?", loc_sub: "Choisissez l'étape de la tournée.",
+      loc_none: "Pas de tournée aujourd'hui — à bientôt !", loc_today: "aujourd'hui",
       order_title: "Composez votre commande", order_sub: "Ajoutez vos pizzas et gourmandises.",
       order_continue: "Continuer", order_empty: "Ajoutez au moins un article.",
       order_count_one: "pizza", order_count_many: "pizzas", order_items: "article(s)",
       date_title: "Quel jour ?", date_none: "Aucune date disponible pour cette étape prochainement.",
-      time_title: "Heure de retrait", time_none: "Plus de créneau libre ce jour-là. Choisissez un autre jour.",
+      time_title: "Heure de retrait", time_none: "Plus de créneau libre pour l'instant.",
+      slot_taken: "réservé",
       time_left: "restant", time_left_full: "places",
       details_title: "Vos coordonnées",
       f_name: "Nom", f_email: "E-mail", f_phone: "Téléphone", f_notes: "Remarque (optionnel)",
@@ -43,11 +45,13 @@
       step: "Schritt", of: "von",
       back: "← Zurück",
       loc_title: "Wo holst du ab?", loc_sub: "Wähle die Tournée-Station.",
+      loc_none: "Heute keine Tournée — bis bald!", loc_today: "heute",
       order_title: "Stell deine Bestellung zusammen", order_sub: "Füge Pizzen und Feines hinzu.",
       order_continue: "Weiter", order_empty: "Füge mindestens einen Artikel hinzu.",
       order_count_one: "Pizza", order_count_many: "Pizzen", order_items: "Artikel",
       date_title: "Welcher Tag?", date_none: "Für diese Station ist demnächst kein Tag verfügbar.",
-      time_title: "Abholzeit", time_none: "An diesem Tag ist nichts mehr frei. Bitte anderen Tag wählen.",
+      time_title: "Abholzeit", time_none: "Aktuell kein Fenster mehr frei.",
+      slot_taken: "belegt",
       time_left: "frei", time_left_full: "Plätze",
       details_title: "Deine Angaben",
       f_name: "Name", f_email: "E-Mail", f_phone: "Telefon", f_notes: "Bemerkung (optional)",
@@ -174,12 +178,23 @@
       var service = (config.services || [{}])[0];
       var state = { locationId: null, serviceId: service.id, items: {}, partySize: 0, itemCount: 0, date: null, start: null, booking: null };
 
+      var sameDay = !!(config.booking && config.booking.sameDayOnly);
+      var todayStr = E._util.ymd(new Date());
       var steps = [];
       if (f.multiLocation && (config.locations || []).length) steps.push("location");
-      steps.push("order", "date", "time", "details", "done");
+      steps.push("order");
+      if (!sameDay) steps.push("date");   // Tag-Auswahl kann im Admin ausgeschaltet werden
+      steps.push("time", "details", "done");
+      if (sameDay) state.date = todayStr;
       var i = 0;
 
       function locObj() { return (config.locations || []).find(function (l) { return l.id === state.locationId; }); }
+      function locWeekdays(l) { return Object.keys(l.hours || {}).map(Number); }
+      function daysUntil(l) {
+        var todayWd = new Date().getDay();
+        var ds = locWeekdays(l).map(function (wd) { return (wd - todayWd + 7) % 7; });
+        return ds.length ? Math.min.apply(null, ds) : 99;
+      }
 
       function computeTotals() {
         var pizzas = 0, count = 0;
@@ -235,18 +250,26 @@
         if (step === "done") return renderDone();
       }
 
-      // --- Standort ---
+      // --- Standort (heutige Stops zuerst; bei sameDay nur heute) ---
       function renderLocation() {
-        var locs = (config.locations || []).slice().sort(function (a, b) { return (a.sort || 0) - (b.sort || 0); });
+        var todayWd = new Date().getDay();
+        var locs = (config.locations || []).slice();
+        if (sameDay) locs = locs.filter(function (l) { return locWeekdays(l).indexOf(todayWd) >= 0; });
+        locs.sort(function (a, b) { var da = daysUntil(a), db = daysUntil(b); return da !== db ? da - db : (a.sort || 0) - (b.sort || 0); });
+        if (!locs.length) { shell(t.loc_title, t.loc_sub, H("p", { class: "bce__empty" }, [t.loc_none]), false); return; }
         var list = H("div", { class: "bce__list" }, locs.map(function (l) {
           var svcLabel = l.service === "midi" ? t.midi : t.soir;
           var hrs = (l.hours[Object.keys(l.hours)[0]] || [{}])[0];
-          return H("button", { class: "bce__opt", type: "button", onclick: function () { state.locationId = l.id; i++; render(); } }, [
+          var isToday = daysUntil(l) === 0;
+          var meta = [];
+          if (isToday) meta.push(H("span", { class: "bce__opttoday" }, [t.loc_today]));
+          meta.push(H("span", {}, [tr(l.weekdayLabel, lang) + " · " + svcLabel + (hrs ? "  " + hrs.start + "–" + hrs.end : "")]));
+          return H("button", { class: "bce__opt" + (isToday ? " is-today" : ""), type: "button", onclick: function () { state.locationId = l.id; i++; render(); } }, [
             H("span", { class: "bce__optcol" }, [
               H("span", { class: "bce__optname" }, [l.name]),
               H("span", { class: "bce__optplace" }, [l.place])
             ]),
-            H("span", { class: "bce__optmeta" }, [tr(l.weekdayLabel, lang) + " · " + svcLabel + (hrs ? "  " + hrs.start + "–" + hrs.end : "")])
+            H("span", { class: "bce__optmeta" }, meta)
           ]);
         }));
         shell(t.loc_title, t.loc_sub, list, false);
@@ -332,21 +355,37 @@
         });
       }
 
-      // --- Uhrzeit ---
+      // --- Uhrzeit: alle künftigen Slots von oben nach unten ---
+      // frei = wählbar, belegt = ausgegraut; die 3 letzten vergangenen ausgegraut.
       function renderTime() {
         adapter.getBusy(state.date).then(function (busy) {
-          var slots = E.computeAvailableSlots(config, {
+          var free = {};
+          E.computeAvailableSlots(config, {
             date: state.date, serviceId: state.serviceId, locationId: state.locationId,
             partySize: state.partySize, existingBookings: busy
-          });
-          var body = slots.length
-            ? H("div", { class: "bce__slots" }, slots.map(function (s) {
-                return H("button", { class: "bce__slot", type: "button", onclick: function () { state.start = s.start; i++; render(); } }, [
-                  H("span", { class: "bce__slottime" }, [s.start]),
-                  (s.remaining != null && s.remaining <= 4) ? H("span", { class: "bce__slotleft" }, [s.remaining + " " + t.time_left]) : H("span")
-                ]);
-              }))
-            : H("p", { class: "bce__empty" }, [t.time_none]);
+          }).forEach(function (s) { free[s.start] = true; });
+
+          var grid = E.daySlots(config, { date: state.date, serviceId: state.serviceId, locationId: state.locationId });
+          if (!grid.length) { shell(t.time_title + " · " + fmtDate(state.date, locale), null, H("p", { class: "bce__empty" }, [t.time_none]), true); return; }
+
+          var isToday = state.date === E._util.ymd(new Date());
+          var nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+          var past = [], future = [];
+          grid.forEach(function (s) { ((isToday && E._util.toMin(s.start) < nowMin) ? past : future).push(s); });
+
+          function slotEl(s, kind) {
+            var kids = [H("span", { class: "bce__ttime" }, [s.start])];
+            if (kind === "taken") kids.push(H("span", { class: "bce__tlabel" }, [t.slot_taken]));
+            if (kind === "free") return H("button", { class: "bce__tslot is-free", type: "button", onclick: function () { state.start = s.start; i++; render(); } }, kids);
+            return H("div", { class: "bce__tslot is-" + kind, "aria-disabled": "true" }, kids);
+          }
+
+          var rows = [];
+          past.slice(-3).forEach(function (s) { rows.push(slotEl(s, "past")); });
+          future.forEach(function (s) { rows.push(slotEl(s, free[s.start] ? "free" : "taken")); });
+
+          var body = H("div", { class: "bce__times" }, rows);
+          if (!future.some(function (s) { return free[s.start]; })) body.appendChild(H("p", { class: "bce__empty" }, [t.time_none]));
           shell(t.time_title + " · " + fmtDate(state.date, locale), null, body, true);
         });
       }
