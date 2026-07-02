@@ -62,6 +62,7 @@
     booking: {
       slotPerItem: true,          // eine Pizza pro Slot, Mehrfachbestellung = Folge-Slots
       sameDayOnly: false,         // true = Kunde bestellt nur für heute (kein Tag-Schritt)
+      transitionMin: 1,           // NUR Anzeige im Admin zwischen den Karten ("1 MIN")
       slotGranularityMinutes: 5,  // = Dauer pro Pizza (auto im Admin)
       leadTimeMinutes: 45,        // frühestens 45 Min im Voraus (Vorbereitung)
       bookingHorizonDays: 14,     // bis 2 Wochen im Voraus vorbestellbar

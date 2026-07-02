@@ -32,7 +32,7 @@ create table if not exists settings (
     "onlinePayment": false, "customForms": false
   }'::jsonb,
   booking jsonb default '{
-    "slotPerItem": true, "sameDayOnly": false,
+    "slotPerItem": true, "sameDayOnly": false, "transitionMin": 1,
     "slotGranularityMinutes": 5, "leadTimeMinutes": 45, "bookingHorizonDays": 14,
     "cutoffMinutesBeforeSlot": 0, "maxBookingsPerDay": null, "autoConfirm": true
   }'::jsonb,
@@ -131,13 +131,40 @@ create table if not exists bookings (
   booking_date   date not null,
   start_time     time not null,
   end_time       time not null,
-  party_size     integer default 0,   -- Anzahl Ofen-Artikel (Pizzen) = Kapazitätsbedarf
+  party_size     integer default 0,   -- Anzahl Pizzen = belegte Folge-Slots
   items          jsonb,               -- [{id,name,qty,oven}]
-  notes          text,
-  status         text not null default 'pending', -- pending | confirmed | declined | cancelled
+  notes          text,                -- '__BLOCK__' = Pause/Blocker (keine echte Bestellung)
+  reminder_channel text default 'none', -- none | email | messenger (Erinnerung 10 Min vorher)
+  status         text not null default 'pending', -- pending | confirmed | paid | declined | cancelled
   cancel_token   uuid default gen_random_uuid(),
   created_at     timestamptz default now()
 );
+
+-- Realtime (Schritt 3): PII-freie Event-Tabelle. Anonyme Kunden dürfen `bookings`
+-- nicht lesen (Datenschutz) und könnten daher keine Realtime-Events davon
+-- empfangen. Ein Trigger schreibt bei jeder Änderung einen neutralen Eintrag
+-- (nur Datum + Standort) hierher; darauf hört das Kunden-Widget.
+create table if not exists slot_events (
+  id           bigserial primary key,
+  booking_date date,
+  location_id  text,
+  created_at   timestamptz default now()
+);
+create or replace function notify_slot_change() returns trigger language plpgsql security definer as $$
+begin
+  insert into slot_events (booking_date, location_id)
+  values (coalesce(new.booking_date, old.booking_date), coalesce(new.location_id, old.location_id));
+  return null;
+end $$;
+drop trigger if exists trg_slot_change on bookings;
+create trigger trg_slot_change after insert or update or delete on bookings
+  for each row execute function notify_slot_change();
+do $$ begin alter publication supabase_realtime add table slot_events; exception when duplicate_object then null; end $$;
+
+alter table slot_events enable row level security;
+drop policy if exists "public read slot_events" on slot_events;
+create policy "public read slot_events" on slot_events for select to anon, authenticated using (true);
+grant select on slot_events to anon, authenticated;
 create index if not exists bookings_date_idx on bookings (booking_date);
 create index if not exists bookings_loc_date_idx on bookings (location_id, booking_date);
 

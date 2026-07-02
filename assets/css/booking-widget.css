@@ -45,7 +45,19 @@
 .bce__optplace { font-size: 13px; color: var(--bce-muted); }
 .bce__optmeta { color: var(--bce-warm); font-size: 13px; text-align: right; white-space: nowrap; display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
 .bce__opt.is-today { border-color: var(--bce-warm); }
+.bce__opt.is-off { opacity: .5; cursor: not-allowed; }
+.bce__opt.is-off:hover { transform: none; border-color: var(--bce-line); box-shadow: none; }
 .bce__opttoday { background: var(--bce-accent); color: #fff; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+
+/* Bestätigung: Benachrichtigungswahl */
+.bce__notify { display: grid; gap: 12px; max-width: 420px; }
+.bce__nopt { display: flex; align-items: center; gap: 13px; padding: 16px 18px; border: 1px solid var(--bce-line); border-radius: 12px; background: #fff; font: inherit; font-size: 16px; font-weight: 600; cursor: pointer; text-align: left; transition: border-color .15s, background .15s, transform .1s; }
+.bce__nopt:hover { border-color: var(--bce-warm); background: var(--bce-cream); transform: translateY(-1px); }
+.bce__nopt--muted { color: var(--bce-muted); font-weight: 500; }
+.bce__nicon { font-size: 20px; }
+.bce__donehint { font-size: 14px; color: var(--bce-warm); background: var(--bce-cream); padding: 12px 14px; border-radius: 10px; margin: 0; }
+.bce__whatsapp { display: inline-block; background: #25D366; color: #fff; padding: 12px 18px; border-radius: 10px; font-weight: 700; text-decoration: none; }
+.bce__whatsapp:hover { filter: brightness(.95); }
 
 /* Uhrzeiten als vertikale Liste (frei / belegt / vergangen) */
 .bce__times { display: flex; flex-direction: column; gap: 8px; max-height: 54vh; overflow-y: auto; padding-right: 4px; -webkit-overflow-scrolling: touch; }

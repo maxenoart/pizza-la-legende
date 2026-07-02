@@ -82,40 +82,51 @@ body { margin: 0; font-family: var(--sans); color: var(--dark); background: var(
 .oc__spot { font-family: var(--sans); font-size: 12px; color: #bcae9f; }
 .oc__hrs { font-size: 14px; color: #e4d9cc; white-space: nowrap; }
 
-.oc__list { display: grid; gap: 8px; }
-.oc__row { display: grid; grid-template-columns: 46px 1fr auto; align-items: center; gap: 12px;
-  border: 1px solid var(--line); border-radius: 12px; padding: 9px 11px; background: #fff; }
-.oc__thumb { width: 46px; height: 46px; border-radius: 10px; object-fit: cover; background: var(--bg); flex: 0 0 auto; }
-.oc__mid { min-width: 0; display: grid; gap: 2px; }
-.oc__line1 { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
-.oc__time { font-size: 17px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-.oc__name { font-weight: 600; font-size: 15px; }
-.oc__phone { color: var(--warm); font-size: 13px; text-decoration: none; }
-.oc__phone:hover { text-decoration: underline; }
-.oc__items { font-size: 14px; color: var(--warm); line-height: 1.35; overflow-wrap: anywhere; }
-.oc__meta { font-size: 11px; color: #b6a89a; letter-spacing: .02em; }
-.oc__note { font-size: 12.5px; color: var(--muted); font-style: italic; }
+/* ==== Zeitleiste (Timeline) ============================================== */
+.tl { display: grid; gap: 8px; }
+.tl__now { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+.tl__nowdot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px rgba(226,7,59,.15); flex: 0 0 auto; }
+.tl__trans { text-align: center; font-size: 10px; letter-spacing: .12em; color: #b6a89a; }
 
-.oc__act { display: flex; gap: 7px; flex: 0 0 auto; }
-.oc__done, .oc__no { width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line); background: #fff; font-size: 18px; cursor: pointer; line-height: 1; }
-.oc__done { color: var(--ok); border-color: #cfe6d7; }
-.oc__done:hover { background: #e7f2ea; }
-.oc__no { color: var(--accent); border-color: #f0d6dd; }
-.oc__no:hover { background: #f6e7ea; }
+/* Alle Zeitkarten: identische Höhe (gleiche Dauer). */
+.tl__card { display: grid; align-items: center; gap: 12px; min-height: 76px;
+  border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: #fff; }
+.tl__card.is-grey { opacity: .5; }
+.tl__thumb { width: 42px; height: 42px; border-radius: 9px; object-fit: cover; background: var(--bg); }
 
-.oc__row--empty { grid-template-columns: auto 1fr auto; background: #fbf9f5; border-style: dashed; padding: 8px 11px; }
-.oc__free { font-size: 13px; color: var(--muted); }
-.oc__pausebtn { background: #f3efe9; border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; font: inherit; font-size: 13px; cursor: pointer; color: var(--warm); }
-.oc__pausebtn:hover { border-color: var(--warm); }
+.tl__card--order { grid-template-columns: 42px 58px 1fr auto; }
+.tl__card--empty, .tl__card--block { grid-template-columns: 58px 1fr auto; }
+.tl__card--cont { grid-template-columns: 58px 1fr; }
 
-.oc__row--pause { grid-template-columns: auto 1fr auto; background: #f7f3ee; }
-.oc__pausetag { font-size: 14px; color: var(--warm); font-weight: 600; }
+.tl__timecol { display: grid; gap: 2px; align-content: center; }
+.tl__time { font-size: 18px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1; }
+.tl__state { font-size: 12px; color: var(--muted); }
+.tl__state--busy { color: var(--warm); font-weight: 600; }
+.tl__state--block { color: var(--accent); font-weight: 700; }
+.tl__prep { font-size: 11px; color: #b6a89a; }
 
-.oc__row--cont { grid-template-columns: auto 1fr; background: #fbf9f5; padding: 6px 11px; opacity: .7; }
-.oc__row--cont .oc__time { font-size: 14px; color: var(--muted); }
-.oc__conttag { font-size: 12.5px; color: var(--muted); }
+/* Inhalt der Bestellung = stärkste Gewichtung; Name/Tel dezent. */
+.tl__mid { min-width: 0; display: grid; gap: 3px; }
+.tl__order { font-size: 16px; font-weight: 700; color: var(--dark); line-height: 1.25; overflow-wrap: anywhere; }
+.tl__cust { font-size: 12.5px; color: var(--muted); }
+.tl__phone { color: var(--muted); text-decoration: none; }
+.tl__phone:hover { text-decoration: underline; }
+.tl__note { font-size: 12px; color: var(--muted); font-style: italic; }
 
-.oc__donehead { margin: 22px 0 8px; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
-.oc__row--done { grid-template-columns: 40px 1fr auto; opacity: .62; padding: 7px 11px; }
-.oc__row--done .oc__thumb { width: 40px; height: 40px; }
-.oc__doneflag { color: var(--ok); font-size: 18px; }
+.tl__act { display: flex; align-items: center; }
+.tl__pay { border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 10px 13px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; color: var(--warm); }
+.tl__pay:hover { border-color: var(--warm); }
+.tl__pay.is-paid { background: #e7f2ea; color: var(--ok); border-color: #cfe6d7; }
+
+.tl__card--empty { background: #fbf9f5; border-style: dashed; }
+.tl__block { background: #f3efe9; border: 1px solid var(--line); border-radius: 9px; padding: 10px 13px; font: inherit; font-size: 13px; cursor: pointer; color: var(--warm); white-space: nowrap; }
+.tl__block:hover { border-color: var(--accent); color: var(--accent); }
+
+.tl__card--block { background: #fbeaee; border-color: #f0c9d3; }
+.tl__blocktxt { font-size: 13px; color: var(--accent); line-height: 1.35; }
+.tl__unblock { background: #fff; border: 1px solid #f0c9d3; color: var(--accent); border-radius: 9px; padding: 10px 13px; font: inherit; font-size: 13px; cursor: pointer; white-space: nowrap; }
+
+.tl__card--cont { background: #fbf9f5; opacity: .85; }
+.tl__contlbl { font-size: 12.5px; color: var(--muted); }
+
+.tl__unpaidhead { margin: 24px 0 8px; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-weight: 700; }

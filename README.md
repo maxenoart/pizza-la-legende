@@ -17,8 +17,13 @@ Supabase-Backend (Stufe 2) für echte Bestellungen, Verfügbarkeit & E-Mails.
 | Seiten | `index.html`, `carte.html`, `commander.html`, `louer.html`, `mentions-legales.html`, `confidentialite.html`, `404.html` |
 | Design-System | `assets/css/site.css` |
 | Buchungs-Engine (getestet) | `assets/js/availability.js` + `scripts/availability.test.js` |
-| Bestell-Widget | `assets/js/booking-widget.js` + `assets/css/booking-widget.css` |
+| Datenschicht (Supabase/Demo, Realtime) | `assets/js/adapters.js` (`window.LegendeData`) |
+| Bestell-Widget (reine UI) | `assets/js/booking-widget.js` + `assets/css/booking-widget.css` |
 | Konfiguration (Single Source) | `assets/js/config.js` |
+
+**Architektur:** `config.js` (Daten) → `availability.js` (Engine, 0 Deps) → `adapters.js`
+(kapselt WO die Daten liegen) → `booking-widget.js` / `admin/admin.js` (reine UI).
+Widget und Admin kennen kein Supabase — sie sprechen nur mit `window.LegendeData`.
 | Admin-Panel | `admin/index.html`, `admin/admin.js`, `admin/admin.css` |
 | Backend | `supabase/schema.sql`, `supabase/seed.sql`, `supabase/functions/*` |
 | SEO/PWA | `sitemap.xml`, `robots.txt`, `site.webmanifest`, `assets/img/favicon.svg` |
@@ -70,9 +75,15 @@ Die Vorbestellung funktioniert dann bereits (Demo). Für echte Bestellungen → 
 supabase/schema.sql
 supabase/seed.sql
 ```
-> Wurde die DB schon vor der Session-Umstellung aufgesetzt: einmalig zusätzlich
-> `supabase/migration-sessions.sql` ausführen (stellt Dauer/Übergangszeit/Slot-
-> Abstand aufs Session-Modell um).
+> Wurde die DB schon früher aufgesetzt, einmalig die Migrationen nachziehen:
+> `supabase/migration-sessions.sql` (Slot-pro-Pizza-Modell) **und**
+> `supabase/migration-ui-v2.sql` (reminder_channel, Realtime-Events, Anzeige-
+> Transition). Beide sind idempotent.
+
+**Realtime (Live-Zeitfenster):** wird durch `schema.sql` / `migration-ui-v2.sql`
+eingerichtet (Tabelle `slot_events` + Trigger + Publication). Das Kunden-Widget
+aktualisiert die freien Zeiten automatisch, wenn parallel jemand bestellt — ohne
+Reload. Es hört auf die PII-freie `slot_events`, nie direkt auf `bookings`.
 
 **c) Registrierung deaktivieren** (nur der Betreiber soll Admin sein):
 Authentication → Providers → Email → **„Allow new users to sign up" ausschalten**.
