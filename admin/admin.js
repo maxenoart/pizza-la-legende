@@ -46,7 +46,6 @@
   function loc(id) { return (config.locations || []).find(function (l) { return l.id === id; }) || {}; }
   function perPizza() { return ((config.services || [{}])[0].durationMinutes) || 5; }
   function granularity() { return (config.booking && config.booking.slotGranularityMinutes) || perPizza(); }
-  function transitionMin() { return (config.booking && config.booking.transitionMin) || 0; }
   function productById(id) { return ((config.menu && config.menu.products) || []).find(function (p) { return p.id === id; }); }
   function itemName(it) { var p = productById(it.id); return it.name || (p && (p.name.fr || p.name)) || it.id; }
   function itemsSummary(items) { return (items || []).map(function (it) { return it.qty + "× " + itemName(it); }).join(" · "); }
@@ -166,6 +165,7 @@
 
     var list = H("div", { class: "tl" }); v.appendChild(list);
     var unpaidWrap = H("div", {}); v.appendChild(unpaidWrap);
+    v.appendChild(H("button", { class: "tl__jump", title: "Aller à maintenant", onclick: function () { var el = document.getElementById("tl-now"); if (el) el.scrollIntoView({ behavior: "smooth", block: "center" }); } }, ["↓ Maintenant"]));
     list.appendChild(H("p", { class: "ad__muted" }, ["Chargement…"]));
 
     loadBookings().then(function (all) {
@@ -184,81 +184,90 @@
         if (idx >= 0) for (var k = 1; k < span; k++) { var tt = grid[idx + k]; if (tt && !owner[tt]) cont[tt] = b; }
       });
 
-      // Overdue-unbezahlt: aktive Bestellung, >3 Slots vergangen, nicht bezahlt
+      // Aktiver Auftrag: läuft gerade (Start ≤ jetzt < Start + Dauer).
+      function isActive(b, tt) { if (!isToday || !b || b.blocker) return false; var s = toMin(tt); return s <= now && now < s + Math.max(1, b.qty || 1) * perPizza(); }
+      function nowLine() { return H("div", { class: "tl__now", id: "tl-now" }, [H("span", { class: "tl__nowlbl" }, [mmToHHMM(now)]), H("span", { class: "tl__nowline" }), H("span", { class: "tl__nowdot" })]); }
+
+      // Overdue-unbezahlt (Zusatzliste unten): aktive Bestellung, >3 Slots her, nicht bezahlt.
       var overdue = mine.filter(function (b) { return !b.blocker && b.status !== "paid" && isToday && toMin(b.time) < now - 3 * g; });
-      var overdueIds = {}; overdue.forEach(function (b) { overdueIds[b.id] = true; });
 
       if (!grid.length) { list.appendChild(H("p", { class: "ad__muted" }, ["Pas de service à cette étape ce jour-là."])); }
 
-      var pastTimes = [], futureTimes = [];
-      grid.forEach(function (tt) { ((isToday && toMin(tt) < now) ? pastTimes : futureTimes).push(tt); });
-
-      // Vergangene: bis zu 3 Karten mit Bestellung/Blocker (nicht overdue) — ausgegraut
-      var pastCards = pastTimes.filter(function (tt) { var b = owner[tt]; return b && !overdueIds[b.id]; }).slice(-3);
-      pastCards.forEach(function (tt) { list.appendChild(card(tt, owner[tt], cont[tt], cur, true)); });
-
-      // Jetzt-Marker
-      if (isToday && futureTimes.length) list.appendChild(H("div", { class: "tl__now" }, [H("span", { class: "tl__nowdot" }), "maintenant · " + mmToHHMM(now)]));
-
-      // Zukunft: alle Slots + kleine Übergangszeit dazwischen
-      futureTimes.forEach(function (tt, idx) {
-        var b = owner[tt];
-        if (b && overdueIds[b.id]) return; // overdue landet in der Liste unten
-        if (idx > 0 && transitionMin() > 0) list.appendChild(H("div", { class: "tl__trans" }, [transitionMin() + " MIN"]));
-        list.appendChild(card(tt, b, cont[tt], cur, false));
+      // Zeitleiste: ALLE Slots chronologisch, Jetzt-Linie an der richtigen Stelle.
+      var nowPlaced = false;
+      grid.forEach(function (tt) {
+        if (isToday && !nowPlaced && toMin(tt) >= now) { list.appendChild(nowLine()); nowPlaced = true; }
+        var b = owner[tt], active = isActive(b, tt);
+        var past = isToday && toMin(tt) < now && !active;
+        list.appendChild(card(tt, b, cont[tt], { past: past, active: active }));
       });
+      if (isToday && !nowPlaced) list.appendChild(nowLine());
 
-      // Non payées
+      // Non payées (Zusatzliste, aktionierbar)
       if (overdue.length) {
-        unpaidWrap.appendChild(H("div", { class: "tl__unpaidhead" }, ["Non payées"]));
-        overdue.sort(function (a, b) { return a.time.localeCompare(b.time); }).forEach(function (b) { unpaidWrap.appendChild(card(b.time, b, null, cur, true)); });
+        unpaidWrap.appendChild(H("div", { class: "tl__unpaidhead" }, ["Non payées · " + overdue.length]));
+        overdue.sort(function (a, b) { return a.time.localeCompare(b.time); }).forEach(function (b) { unpaidWrap.appendChild(orderCard(b.time, b, { past: false, active: false })); });
       }
     });
 
-    // ---- Kartenbau ----
-    function card(tStart, b, contB, cur, greyed) {
-      if (contB && !b) return H("div", { class: "tl__card tl__card--cont" }, [H("b", { class: "tl__time" }, [tStart]), H("span", { class: "tl__contlbl" }, ["⟶ même commande"])]);
-      if (b && b.blocker) return blockerCard(tStart, b);
-      if (b) return orderCard(tStart, b, cur, greyed);
-      return emptyCard(tStart);
+    // ---- Kartenbau: 4 klar unterscheidbare Zustände ----
+    function card(tStart, b, contB, o) {
+      o = o || {};
+      if (contB && !b) return contCard(tStart, o.past);
+      if (b && b.blocker) return blockerCard(tStart, b, o.past);
+      if (b) return orderCard(tStart, b, o);
+      return emptyCard(tStart, o.past);
     }
 
-    function timeCol(tStart, label) { return H("div", { class: "tl__timecol" }, [H("b", { class: "tl__time" }, [tStart]), H("span", { class: "tl__state" }, [label])]); }
+    function contCard(tStart, past) {
+      return H("div", { class: "tl__card tl__card--cont" + (past ? " is-grey" : "") }, [
+        H("div", { class: "tl__timecol" }, [H("b", { class: "tl__time" }, [tStart])]),
+        H("span", { class: "tl__contlbl" }, ["↳ suite de la commande"])
+      ]);
+    }
 
-    function orderCard(tStart, b, cur, greyed) {
+    // FORM 3 — Bestellung (Bild + Inhalt hervorgehoben)
+    function orderCard(tStart, b, o) {
       var paid = b.status === "paid";
-      var prep = Math.max(1, b.qty || 1) * perPizza();
+      var block = Math.max(1, b.qty || 1) * perPizza();
       var col = H("div", { class: "tl__timecol" }, [
         H("b", { class: "tl__time" }, [tStart]),
         H("span", { class: "tl__state tl__state--busy" }, ["Occupé"]),
-        H("span", { class: "tl__prep" }, ["≈ " + prep + " min"])
+        H("span", { class: "tl__prep" }, ["≈ " + block + " min"])
       ]);
+      var order = [H("span", { class: "tl__order" }, [itemsSummary(b.items) || "—"])];
+      if (o.active) order.push(H("span", { class: "tl__live" }, ["● En cours"]));
       var mid = H("div", { class: "tl__mid" }, [
-        H("div", { class: "tl__order" }, [itemsSummary(b.items) || "—"]),
+        H("div", { class: "tl__orderline" }, order),
         H("div", { class: "tl__cust" }, [(b.name || "—"), b.phone ? H("a", { class: "tl__phone", href: "tel:" + String(b.phone).replace(/\s/g, "") }, [" · " + b.phone]) : H("span")]),
         b.notes && b.notes !== BLOCK ? H("div", { class: "tl__note" }, ["“" + b.notes + "”"]) : H("span")
       ]);
-      var payBtn = H("button", { class: "tl__pay" + (paid ? " is-paid" : ""), onclick: function () { setStatus(b.id, paid ? "confirmed" : "paid").then(render); } }, [paid ? "💰 Payé" : "💰 Payé ?"]);
-      return H("div", { class: "tl__card tl__card--order" + (greyed || paid ? " is-grey" : ""), style: "background-image:none" }, [
+      var payBtn = H("button", { class: "tl__pay" + (paid ? " is-paid" : ""), onclick: function () { setStatus(b.id, paid ? "confirmed" : "paid").then(render); } }, [paid ? "💰 Payé" : "💰 Payer ?"]);
+      var cls = "tl__card tl__card--order" + (o.active ? " is-active" : "") + ((o.past || paid) && !o.active ? " is-grey" : "");
+      return H("div", { class: cls }, [
         H("img", { class: "tl__thumb", src: firstImg(b.items), alt: "", onerror: function () { this.src = PIZZA_SVG; } }),
         col, mid, H("div", { class: "tl__act" }, [payBtn])
       ]);
     }
 
-    function emptyCard(tStart) {
-      return H("div", { class: "tl__card tl__card--empty" }, [
-        timeCol(tStart, "Libre"),
-        H("div", { class: "tl__mid tl__mid--empty" }, [""]),
-        H("div", { class: "tl__act" }, [H("button", { class: "tl__block", onclick: function () { createBlocker(tStart).then(render); } }, ["🔒 Bloquer"])])
+    // FORM 2 — freier Slot (prominenter Bloquer-Button; Vergangenheit nicht bearbeitbar)
+    function emptyCard(tStart, past) {
+      var right = past ? H("span", { class: "tl__pastfree" }, ["—"]) : H("button", { class: "tl__block", onclick: function () { createBlocker(tStart).then(render); } }, ["🔒 Bloquer"]);
+      return H("div", { class: "tl__card tl__card--empty" + (past ? " is-grey" : "") }, [
+        H("div", { class: "tl__timecol" }, [H("b", { class: "tl__time" }, [tStart]), H("span", { class: "tl__state" }, ["Libre"])]),
+        H("div", { class: "tl__mid tl__mid--empty" }, [H("span", { class: "tl__emptytxt" }, ["Pas de commande"])]),
+        H("div", { class: "tl__act" }, [right])
       ]);
     }
 
-    function blockerCard(tStart, b) {
+    // FORM 4 — blockierte Zeit (klar als Pause erkennbar)
+    function blockerCard(tStart, b, past) {
       var end = mmToHHMM(toMin(tStart) + perPizza());
-      return H("div", { class: "tl__card tl__card--block" }, [
-        H("div", { class: "tl__timecol" }, [H("b", { class: "tl__time" }, [tStart]), H("span", { class: "tl__state tl__state--block" }, ["Pause"])]),
-        H("div", { class: "tl__mid" }, [H("div", { class: "tl__blocktxt" }, ["🔒 Tu prends une pause jusqu'à " + end + ". Aucune commande ne peut être réservée sur ce créneau."])]),
-        H("div", { class: "tl__act" }, [H("button", { class: "tl__unblock", title: "Retirer", onclick: function () { removeBooking(b.id).then(render); } }, ["Retirer"])])
+      var right = past ? H("span") : H("button", { class: "tl__unblock", title: "Retirer", onclick: function () { removeBooking(b.id).then(render); } }, ["Retirer"]);
+      return H("div", { class: "tl__card tl__card--block" + (past ? " is-grey" : "") }, [
+        H("div", { class: "tl__timecol" }, [H("span", { class: "tl__blockicon" }, ["🔒"]), H("b", { class: "tl__time" }, [tStart]), H("span", { class: "tl__state tl__state--block" }, ["Pause"])]),
+        H("div", { class: "tl__mid" }, [H("div", { class: "tl__blocktxt" }, ["Pause jusqu'à " + end + ". Aucune commande ne peut être réservée sur ce créneau."])]),
+        H("div", { class: "tl__act" }, [right])
       ]);
     }
   }
@@ -332,19 +341,22 @@
     var b = config.booking = config.booking || {};
     function saveBooking() { if (MODE === "supabase") sb.from("settings").update({ booking: b }).eq("id", true).then(function () { toast("Enregistré"); }); else { saveLocalConfig(); toast("Enregistré"); } }
 
-    v.appendChild(H("h2", {}, ["Durée par pizza"]));
-    v.appendChild(H("p", { class: "ad__muted" }, ["Temps pour une pizza = un créneau. Une commande de N pizzas occupe N créneaux."]));
-    var dur = H("input", { class: "ad__in ad__in--s", type: "number", min: "1", value: svc.durationMinutes != null ? svc.durationMinutes : 5 });
-    dur.addEventListener("change", function () {
-      var d = Number(dur.value) || 1; svc.durationMinutes = d; b.slotGranularityMinutes = d;
-      if (MODE === "supabase") sb.from("services").update({ duration_minutes: d }).eq("id", svc.id).then(function () { sb.from("settings").update({ booking: b }).eq("id", true).then(function () { toast("Enregistré"); }); });
+    v.appendChild(H("h2", {}, ["Temps par pizza"]));
+    v.appendChild(H("p", { class: "ad__muted" }, ["Un créneau réservé = production + préparation. Une commande de N pizzas occupe N créneaux qui se suivent."]));
+    var prod = H("input", { class: "ad__in ad__in--s", type: "number", min: "1", value: b.productionMin != null ? b.productionMin : 8 });
+    var prep = H("input", { class: "ad__in ad__in--s", type: "number", min: "0", value: b.prepMin != null ? b.prepMin : 1 });
+    var totalLbl = H("p", { class: "ad__muted" }, []);
+    function refreshTotal() { totalLbl.textContent = "→ créneau réservé : " + ((Number(prod.value) || 0) + (Number(prep.value) || 0)) + " min par pizza."; }
+    function saveTiming() {
+      var pr = Number(prod.value) || 1, pp = Number(prep.value) || 0, tot = pr + pp;
+      b.productionMin = pr; b.prepMin = pp; svc.durationMinutes = tot; b.slotGranularityMinutes = tot; refreshTotal();
+      if (MODE === "supabase") sb.from("services").update({ duration_minutes: tot }).eq("id", svc.id).then(function () { sb.from("settings").update({ booking: b }).eq("id", true).then(function () { toast("Enregistré"); }); });
       else { saveLocalConfig(); toast("Enregistré"); }
-    });
-    v.appendChild(H("label", { class: "ad__row" }, [H("span", { class: "ad__wd" }, ["Durée par pizza (min)"]), dur]));
-
-    var tr = H("input", { class: "ad__in ad__in--s", type: "number", min: "0", value: b.transitionMin != null ? b.transitionMin : 0 });
-    tr.addEventListener("change", function () { b.transitionMin = Number(tr.value) || 0; saveBooking(); });
-    v.appendChild(H("label", { class: "ad__row" }, [H("span", { class: "ad__wd" }, ["Transition affichée (min)"]), tr]));
+    }
+    prod.addEventListener("change", saveTiming); prep.addEventListener("change", saveTiming);
+    v.appendChild(H("label", { class: "ad__row" }, [H("span", { class: "ad__wd" }, ["Production (min)"]), prod]));
+    v.appendChild(H("label", { class: "ad__row" }, [H("span", { class: "ad__wd" }, ["Préparation (min)"]), prep]));
+    refreshTotal(); v.appendChild(totalLbl);
 
     v.appendChild(H("h2", { class: "ad__mt" }, ["Parcours client"]));
     v.appendChild(H("label", { class: "ad__row ad__toggle" }, [H("span", {}, ["Commander uniquement pour aujourd'hui"]), toggle(!!b.sameDayOnly, function (on) { b.sameDayOnly = on; saveBooking(); })]));

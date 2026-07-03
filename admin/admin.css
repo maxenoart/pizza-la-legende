@@ -83,50 +83,67 @@ body { margin: 0; font-family: var(--sans); color: var(--dark); background: var(
 .oc__hrs { font-size: 14px; color: #e4d9cc; white-space: nowrap; }
 
 /* ==== Zeitleiste (Timeline) ============================================== */
-.tl { display: grid; gap: 8px; }
-.tl__now { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
-.tl__nowdot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px rgba(226,7,59,.15); flex: 0 0 auto; }
-.tl__trans { text-align: center; font-size: 10px; letter-spacing: .12em; color: #b6a89a; }
+.tl { display: grid; gap: 8px; padding-bottom: 8px; }
+
+/* Jetzt-Linie (Kalender-Stil) */
+.tl__now { display: flex; align-items: center; gap: 10px; margin: 4px 0; }
+.tl__nowlbl { font-size: 12px; font-weight: 800; letter-spacing: .04em; color: #fff; background: var(--accent); padding: 3px 10px; border-radius: 20px; font-variant-numeric: tabular-nums; }
+.tl__nowline { flex: 1 1 auto; height: 2px; background: var(--accent); border-radius: 2px; }
+.tl__nowdot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px rgba(226,7,59,.15); flex: 0 0 auto; }
 
 /* Alle Zeitkarten: identische Höhe (gleiche Dauer). */
-.tl__card { display: grid; align-items: center; gap: 12px; min-height: 76px;
-  border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: #fff; }
+.tl__card { display: grid; align-items: center; gap: 12px; min-height: 78px;
+  border: 1px solid var(--line); border-radius: 13px; padding: 10px 12px; background: #fff; }
 .tl__card.is-grey { opacity: .5; }
-.tl__thumb { width: 42px; height: 42px; border-radius: 9px; object-fit: cover; background: var(--bg); }
+.tl__thumb { width: 44px; height: 44px; border-radius: 10px; object-fit: cover; background: var(--bg); }
 
-.tl__card--order { grid-template-columns: 42px 58px 1fr auto; }
-.tl__card--empty, .tl__card--block { grid-template-columns: 58px 1fr auto; }
-.tl__card--cont { grid-template-columns: 58px 1fr; }
+.tl__card--order { grid-template-columns: 44px 60px 1fr auto; }
+.tl__card--empty, .tl__card--block { grid-template-columns: 60px 1fr auto; }
+.tl__card--cont { grid-template-columns: 60px 1fr; min-height: 44px; }
 
 .tl__timecol { display: grid; gap: 2px; align-content: center; }
 .tl__time { font-size: 18px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1; }
-.tl__state { font-size: 12px; color: var(--muted); }
-.tl__state--busy { color: var(--warm); font-weight: 600; }
-.tl__state--block { color: var(--accent); font-weight: 700; }
+.tl__state { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.tl__state--busy { color: var(--warm); font-weight: 700; }
+.tl__state--block { color: #a8690b; font-weight: 700; }
 .tl__prep { font-size: 11px; color: #b6a89a; }
 
-/* Inhalt der Bestellung = stärkste Gewichtung; Name/Tel dezent. */
+/* FORM 3 — Bestellinhalt am stärksten gewichtet */
 .tl__mid { min-width: 0; display: grid; gap: 3px; }
-.tl__order { font-size: 16px; font-weight: 700; color: var(--dark); line-height: 1.25; overflow-wrap: anywhere; }
+.tl__orderline { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.tl__order { font-size: 17px; font-weight: 800; color: var(--dark); line-height: 1.2; overflow-wrap: anywhere; }
 .tl__cust { font-size: 12.5px; color: var(--muted); }
 .tl__phone { color: var(--muted); text-decoration: none; }
 .tl__phone:hover { text-decoration: underline; }
 .tl__note { font-size: 12px; color: var(--muted); font-style: italic; }
+.tl__live { font-size: 10.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #fff; background: var(--accent); padding: 2px 8px; border-radius: 20px; }
 
 .tl__act { display: flex; align-items: center; }
-.tl__pay { border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 10px 13px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; color: var(--warm); }
-.tl__pay:hover { border-color: var(--warm); }
-.tl__pay.is-paid { background: #e7f2ea; color: var(--ok); border-color: #cfe6d7; }
+.tl__pay { border: 1.5px solid var(--line); background: #fff; border-radius: 10px; padding: 11px 14px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; color: var(--warm); }
+.tl__pay:hover { border-color: var(--ok); color: var(--ok); }
+.tl__pay.is-paid { background: #e7f2ea; color: var(--ok); border-color: var(--ok); }
 
+/* Aktiver Auftrag hervorgehoben */
+.tl__card--order.is-active { border-color: var(--accent); border-width: 2px; box-shadow: 0 0 0 4px rgba(226,7,59,.10); }
+
+/* FORM 2 — freier Slot (prominenter Bloquer-Button) */
 .tl__card--empty { background: #fbf9f5; border-style: dashed; }
-.tl__block { background: #f3efe9; border: 1px solid var(--line); border-radius: 9px; padding: 10px 13px; font: inherit; font-size: 13px; cursor: pointer; color: var(--warm); white-space: nowrap; }
-.tl__block:hover { border-color: var(--accent); color: var(--accent); }
+.tl__emptytxt { font-size: 13px; color: #b6a89a; }
+.tl__pastfree { color: #cdbfad; }
+.tl__block { background: var(--dark); border: none; border-radius: 10px; padding: 11px 15px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; color: #fff; white-space: nowrap; }
+.tl__block:hover { filter: brightness(1.18); }
 
-.tl__card--block { background: #fbeaee; border-color: #f0c9d3; }
-.tl__blocktxt { font-size: 13px; color: var(--accent); line-height: 1.35; }
-.tl__unblock { background: #fff; border: 1px solid #f0c9d3; color: var(--accent); border-radius: 9px; padding: 10px 13px; font: inherit; font-size: 13px; cursor: pointer; white-space: nowrap; }
+/* FORM 4 — blockierte Zeit (Amber-Streifen, klar als Pause) */
+.tl__card--block { background: repeating-linear-gradient(45deg, #fff6e6, #fff6e6 10px, #fdeecf 10px, #fdeecf 20px); border-color: #f0d9a8; }
+.tl__blockicon { font-size: 16px; }
+.tl__blocktxt { font-size: 13px; color: #8a5a0b; line-height: 1.35; font-weight: 500; }
+.tl__unblock { background: #fff; border: 1px solid #e6c98a; color: #a8690b; border-radius: 10px; padding: 11px 14px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
 
-.tl__card--cont { background: #fbf9f5; opacity: .85; }
+.tl__card--cont { background: #fbf9f5; opacity: .9; }
 .tl__contlbl { font-size: 12.5px; color: var(--muted); }
 
-.tl__unpaidhead { margin: 24px 0 8px; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+.tl__unpaidhead { margin: 24px 0 8px; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-weight: 800; }
+
+/* „Zu jetzt springen" — schwebender Button */
+.tl__jump { position: fixed; right: 16px; bottom: 88px; z-index: 20; background: var(--dark); color: #fff; border: none; border-radius: 24px; padding: 11px 16px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 24px -8px rgba(38,30,23,.5); }
+.tl__jump:hover { filter: brightness(1.18); }

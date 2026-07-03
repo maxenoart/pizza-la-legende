@@ -17,7 +17,7 @@ on conflict (id) do update set
 -- buffer_after_min = Übergangs-/Aufräumzeit je Bestellung
 -- Beide im Admin unter „Réglages" einstellbar.
 insert into services (id, name, duration_minutes, buffer_after_min, capacity, sort) values
-  ('commande', 'Commande à retirer', 5, 0, 1, 1)
+  ('commande', 'Commande à retirer', 9, 0, 1, 1)
 on conflict (id) do update set
   name = excluded.name, duration_minutes = excluded.duration_minutes,
   buffer_after_min = excluded.buffer_after_min, capacity = excluded.capacity;

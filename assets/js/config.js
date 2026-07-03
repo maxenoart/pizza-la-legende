@@ -62,8 +62,9 @@
     booking: {
       slotPerItem: true,          // eine Pizza pro Slot, Mehrfachbestellung = Folge-Slots
       sameDayOnly: false,         // true = Kunde bestellt nur für heute (kein Tag-Schritt)
-      transitionMin: 1,           // NUR Anzeige im Admin zwischen den Karten ("1 MIN")
-      slotGranularityMinutes: 5,  // = Dauer pro Pizza (auto im Admin)
+      productionMin: 8,           // Produktionszeit pro Pizza
+      prepMin: 1,                 // Vorbereitung/Übergang pro Pizza
+      slotGranularityMinutes: 9,  // = productionMin + prepMin (reservierter Slot je Pizza)
       leadTimeMinutes: 45,        // frühestens 45 Min im Voraus (Vorbereitung)
       bookingHorizonDays: 14,     // bis 2 Wochen im Voraus vorbestellbar
       cutoffMinutesBeforeSlot: 0,
@@ -76,7 +77,7 @@
     //   bufferAfterMinutes = Übergangs-/Aufräumzeit am Ende einer Bestellung
     // Beide im Admin unter „Réglages" einstellbar.
     services: [
-      { id: "commande", name: "Commande à retirer", durationMinutes: 5, bufferAfterMinutes: 0, capacity: 1, price: null }
+      { id: "commande", name: "Commande à retirer", durationMinutes: 9, bufferAfterMinutes: 0, capacity: 1, price: null }
     ],
 
     // --- La tournée : Standorte mit eigenen Öffnungszeiten -------------------
