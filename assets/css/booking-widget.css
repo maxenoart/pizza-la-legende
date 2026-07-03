@@ -67,6 +67,10 @@
 .bce__ttime { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .bce__tslot.is-taken, .bce__tslot.is-past { opacity: .45; background: #f4efe9; color: var(--bce-muted); }
 .bce__tlabel { font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
+.bce__urgency { background: #fdf1e0; color: #a8690b; font-size: 13.5px; font-weight: 600; padding: 10px 14px; border-radius: 10px; margin-bottom: 10px; }
+.bce__waitbtn { margin-top: 12px; background: var(--bce-dark); color: #fff; border: none; border-radius: 10px; padding: 13px 18px; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
+.bce__waitbtn:hover { filter: brightness(1.15); }
+.bce__allerg { font-size: 11.5px; color: var(--bce-muted); }
 
 /* Bestellung */
 .bce__order { display: grid; gap: 4px; max-height: 52vh; overflow-y: auto; padding-right: 4px; -webkit-overflow-scrolling: touch; }

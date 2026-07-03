@@ -147,3 +147,25 @@ body { margin: 0; font-family: var(--sans); color: var(--dark); background: var(
 /* „Zu jetzt springen" — schwebender Button */
 .tl__jump { position: fixed; right: 16px; bottom: 88px; z-index: 20; background: var(--dark); color: #fff; border: none; border-radius: 24px; padding: 11px 16px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 24px -8px rgba(38,30,23,.5); }
 .tl__jump:hover { filter: brightness(1.18); }
+
+/* Bereich-Blocker */
+.oc__range { display: flex; align-items: center; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.oc__rlbl { font-size: 12px; color: #e4d9cc; margin-right: 2px; }
+.oc__rin { background: rgba(255,255,255,.08); color: #fff; border: 1px solid rgba(255,255,255,.2); border-radius: 8px; padding: 6px 8px; font: inherit; font-size: 13px; }
+.oc__rarrow { color: #bcae9f; }
+.oc__rbtn { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 7px 12px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+
+/* Kennzahlen */
+.oc__metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
+.oc__metric { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 10px; text-align: center; }
+.oc__mval { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+.oc__mlbl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
+.oc__retard { background: #fbeaee; color: var(--accent); border: 1px solid #f0c9d3; border-radius: 10px; padding: 10px 14px; font-size: 13.5px; font-weight: 600; margin-bottom: 12px; }
+@media (max-width: 420px) { .oc__metrics { grid-template-columns: repeat(2, 1fr); } }
+
+/* „Prêt" / bereit */
+.tl__act { gap: 6px; }
+.tl__ready { border: 1.5px solid var(--line); background: #fff; border-radius: 10px; padding: 11px 13px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; color: var(--warm); }
+.tl__ready:hover { border-color: var(--accent); color: var(--accent); }
+.tl__readytag { font-size: 12px; font-weight: 700; color: #1e7a45; background: #e7f2ea; border: 1px solid #cfe6d7; border-radius: 10px; padding: 10px 12px; white-space: nowrap; }
+.tl__card--order.is-ready { border-color: #cfe6d7; box-shadow: 0 0 0 3px rgba(30,122,69,.08); }

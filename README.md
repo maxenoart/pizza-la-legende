@@ -75,15 +75,27 @@ Die Vorbestellung funktioniert dann bereits (Demo). Für echte Bestellungen → 
 supabase/schema.sql
 supabase/seed.sql
 ```
-> Wurde die DB schon früher aufgesetzt, einmalig die Migrationen nachziehen:
-> `supabase/migration-sessions.sql` (Slot-pro-Pizza-Modell) **und**
-> `supabase/migration-ui-v2.sql` (reminder_channel, Realtime-Events, Anzeige-
-> Transition). Beide sind idempotent.
+> **Schon früher aufgesetzte DB?** Dann einmalig **`supabase/migrate-existing-db.sql`**
+> ausführen — dieses eine File bringt eine bestehende Datenbank idempotent auf den
+> aktuellen Stand (Zeitmodell, Warteliste, Allergene, Realtime, Idempotenz …).
+> Die Einzel-Migrationen (`migration-sessions/-ui-v2/-v3/-v4.sql`) bleiben als
+> Historie erhalten, werden aber nicht mehr einzeln gebraucht.
 
-**Realtime (Live-Zeitfenster):** wird durch `schema.sql` / `migration-ui-v2.sql`
-eingerichtet (Tabelle `slot_events` + Trigger + Publication). Das Kunden-Widget
-aktualisiert die freien Zeiten automatisch, wenn parallel jemand bestellt — ohne
-Reload. Es hört auf die PII-freie `slot_events`, nie direkt auf `bookings`.
+**Realtime (Live-Zeitfenster + Admin-Ton):** `schema.sql` richtet `slot_events`
+(PII-frei, fürs Kunden-Widget) und die Realtime-Publication für `bookings` ein.
+Das Widget aktualisiert freie Zeiten automatisch, wenn parallel jemand bestellt;
+das Admin gibt bei jeder neuen Bestellung einen Ton. Anonyme sehen dank RLS nie
+fremde Buchungsdaten.
+
+**Edge Functions (optional, nur mit CLI/Deploy):** `book` (server-autoritativ +
+Bestätigungs-Mail — das Widget nutzt sie automatisch, wenn deployt, sonst
+Direct-Insert), `send-reminder` (E-Mail 10 Min vor Abholung), `event-request`,
+`cancel`, `purge-old` (löscht Daten > 12 Monate, Datenschutz). Ohne Deploy läuft
+alles trotzdem (nur ohne automatische Mails).
+
+**Qualität:** `npm test` (27 Engine-Fälle + Integration) läuft bei jedem Push via
+GitHub Actions (`.github/workflows/ci.yml`); ein Playwright-Smoke-Test (`npm run e2e`)
+prüft den Bestellflow.
 
 **c) Registrierung deaktivieren** (nur der Betreiber soll Admin sein):
 Authentication → Providers → Email → **„Allow new users to sign up" ausschalten**.
@@ -152,13 +164,18 @@ Bestätigungs-/Erinnerungs-E-Mails (Resend) gedacht.
 
 ---
 
-## Noch zu ergänzen (Kunde)
+## Noch zu ergänzen (Inhalt vom Kunden)
 
-1. **Einzelpreise** der Karte — nur „dès CHF 13.–" bekannt. Im Admin → „Carte" nachtragen.
+1. **Einzelpreise + Allergene** der Karte — im Admin → „Carte" pro Artikel eintragen (erscheinen dann auf der Karte, im Bestell-Widget und rechtlich sauber).
 2. **Impressum-Adresse & Rechtsform** — in `mentions-legales.html` (aktuell markiert).
 3. **Eigene Fotos** self-hosten — siehe `assets/img/README.md`.
-4. **Lizenzschriften** Messina Sans / Calm Serif — siehe `assets/fonts/README.md`
-   (bis dahin sauberer Google-Fonts-Fallback).
+4. **Lizenzschriften** Messina Sans / Calm Serif — siehe `assets/fonts/README.md` (bis dahin Google-Fonts-Fallback).
+
+## Optional / extern (braucht Konto oder Deploy)
+
+- **Automatische E-Mails/Erinnerungen** → Edge Functions `book` + `send-reminder` deployen + Resend-Key.
+- **Datenschutz-Löschjob** → `purge-old` deployen + als Scheduled Function (monatlich).
+- **Zahlung (Stripe/TWINT), Analytics (Plausible), Fehler-Monitoring (Sentry), Google Business** → jeweils Konto/Key nötig; die Hooks/Struktur sind vorbereitet.
 
 ---
 

@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  engine-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Verfügbarkeits-Engine (27 Fälle)
+        run: node scripts/availability.test.js
+      - name: Integration gegen die echte Config
+        run: node scripts/integration.test.js
+
+  e2e:
+    runs-on: ubuntu-latest
+    continue-on-error: true   # Smoke-Test, blockiert den Build nicht
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e

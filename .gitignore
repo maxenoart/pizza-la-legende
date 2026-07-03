@@ -14,3 +14,5 @@ Thumbs.db
 
 # Dépendances / build éventuels
 node_modules/
+test-results/
+playwright-report/

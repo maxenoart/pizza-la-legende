@@ -93,6 +93,39 @@
   }
   function mmToHHMM(m) { return String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"); }
 
+  function blockRange(fromHHMM, toHHMM) {
+    var f = toMin(fromHHMM), tt = toMin(toHHMM), step = perPizza();
+    var grid = (E ? E.daySlots(config, { date: ctx.date, serviceId: (config.services || [{}])[0].id, locationId: ctx.locId }) : []).map(function (s) { return s.start; });
+    var chain = Promise.resolve();
+    grid.forEach(function (g) { var m = toMin(g); if (m >= f && m < tt) chain = chain.then(function () { return createBlocker(g); }); });
+    return chain;
+  }
+
+  function loadWaitlist() {
+    if (MODE === "supabase") return sb.from("waitlist").select("*").order("created_at").then(function (r) { return r.data || []; });
+    return Promise.resolve(JSON.parse(localStorage.getItem("legende_waitlist") || "[]"));
+  }
+  function setWaitStatus(id, s) {
+    if (MODE === "supabase") return sb.from("waitlist").update({ status: s }).eq("id", id).then(function () { toast("Mis à jour"); });
+    toast("Démo : indisponible"); return Promise.resolve();
+  }
+  function removeWait(id) {
+    if (MODE === "supabase") return sb.from("waitlist").delete().eq("id", id).then(function () { toast("Retiré"); });
+    localStorage.setItem("legende_waitlist", JSON.stringify(JSON.parse(localStorage.getItem("legende_waitlist") || "[]").filter(function (w) { return w.id !== id; }))); toast("Retiré"); return Promise.resolve();
+  }
+
+  var _audioCtx = null;
+  function beep() {
+    try {
+      _audioCtx = _audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      var o = _audioCtx.createOscillator(), g = _audioCtx.createGain();
+      o.type = "sine"; o.frequency.value = 880; o.connect(g); g.connect(_audioCtx.destination);
+      g.gain.setValueAtTime(0.001, _audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.25, _audioCtx.currentTime + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, _audioCtx.currentTime + 0.35);
+      o.start(); o.stop(_audioCtx.currentTime + 0.35);
+    } catch (e) {}
+  }
+
   function loadEvents() { return MODE === "supabase" ? sb.from("event_requests").select("*").order("created_at", { ascending: false }).then(function (r) { return r.data || []; }) : Promise.resolve([]); }
   function setEventStatus(id, s) { if (MODE === "supabase") return sb.from("event_requests").update({ status: s }).eq("id", id).then(function () { toast("Mis à jour"); }); toast("Démo : indisponible"); return Promise.resolve(); }
 
@@ -117,8 +150,19 @@
     }
     app.appendChild(box);
   }
-  function start() { loadConfig().then(function (c) { config = c || {}; if (!ctx.date) ctx.date = today(); render(); }); }
+  function start() { loadConfig().then(function (c) { config = c || {}; if (!ctx.date) ctx.date = today(); render(); initAlarm(); }); }
   function logout() { if (MODE === "supabase" && sb) sb.auth.signOut(); gate(); }
+
+  var _alarm = null;
+  function initAlarm() {
+    if (MODE !== "supabase" || _alarm || !sb.channel) return;
+    _alarm = sb.channel("admin-new-orders")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "bookings" }, function (payload) {
+        var b = payload && payload.new; if (b && b.notes === "__BLOCK__") return; // eigene Blocker nicht melden
+        beep(); toast("Nouvelle commande !"); if (tab === "commandes") render();
+      })
+      .subscribe();
+  }
 
   // ===========================================================================
   // 4) Rahmen + Navigation
@@ -158,15 +202,40 @@
     dateInp.addEventListener("change", function () { ctx.date = dateInp.value; ctx.locId = defaultLoc(ctx.date); render(); });
     var sel = H("select", { class: "oc__sel" }, options.map(function (l) { return H("option", { value: l.id, selected: l.id === ctx.locId ? "selected" : null }, [l.name + (l.service ? " · " + l.service : "")]); }));
     sel.addEventListener("change", function () { ctx.locId = sel.value; render(); });
+    var rFrom = H("input", { class: "oc__rin", type: "time" });
+    var rTo = H("input", { class: "oc__rin", type: "time" });
+    var rangeRow = H("div", { class: "oc__range" }, [
+      H("span", { class: "oc__rlbl" }, ["Bloquer une plage"]), rFrom, H("span", { class: "oc__rarrow" }, ["→"]), rTo,
+      H("button", { class: "oc__rbtn", onclick: function () { if (rFrom.value && rTo.value) blockRange(rFrom.value, rTo.value).then(render); } }, ["🔒 Bloquer"])
+    ]);
     v.appendChild(H("div", { class: "oc__head" }, [
       H("div", { class: "oc__headtop" }, [dateInp, sel]),
-      H("div", { class: "oc__headsub" }, [H("span", { class: "oc__place" }, [cur.name || "—", cur.place ? H("span", { class: "oc__spot" }, [" · " + cur.place]) : H("span")]), H("span", { class: "oc__hrs" }, [hrs ? hrs.start + "–" + hrs.end : "—"])])
+      H("div", { class: "oc__headsub" }, [H("span", { class: "oc__place" }, [cur.name || "—", cur.place ? H("span", { class: "oc__spot" }, [" · " + cur.place]) : H("span")]), H("span", { class: "oc__hrs" }, [hrs ? hrs.start + "–" + hrs.end : "—"])]),
+      rangeRow
     ]));
 
+    var retardBox = H("div", {}); v.appendChild(retardBox);
+    var metrics = H("div", { class: "oc__metrics" }); v.appendChild(metrics);
     var list = H("div", { class: "tl" }); v.appendChild(list);
     var unpaidWrap = H("div", {}); v.appendChild(unpaidWrap);
+    var waitWrap = H("div", {}); v.appendChild(waitWrap);
     v.appendChild(H("button", { class: "tl__jump", title: "Aller à maintenant", onclick: function () { var el = document.getElementById("tl-now"); if (el) el.scrollIntoView({ behavior: "smooth", block: "center" }); } }, ["↓ Maintenant"]));
     list.appendChild(H("p", { class: "ad__muted" }, ["Chargement…"]));
+
+    loadWaitlist().then(function (rows) {
+      var mine = rows.filter(function (w) { var d = w.desired_date || w.date, l = w.location_id || w.locationId; return (!d || d === ctx.date) && (!l || l === ctx.locId) && w.status !== "done"; });
+      if (!mine.length) return;
+      waitWrap.appendChild(H("div", { class: "tl__unpaidhead" }, ["Liste d'attente · " + mine.length]));
+      mine.forEach(function (w) {
+        waitWrap.appendChild(H("div", { class: "ad__card" }, [
+          H("div", { class: "ad__cardbody" }, [H("strong", {}, [w.customer_name || w.name]), " · ", (w.customer_phone || w.phone || ""), H("br"), H("small", {}, [w.customer_email || w.email || ""])]),
+          H("div", { class: "ad__cardfoot" }, [
+            H("button", { class: "ad__chip ad__chip--ok", onclick: function () { setWaitStatus(w.id, "notified").then(render); } }, ["Prévenu"]),
+            H("button", { class: "ad__chip ad__chip--red", onclick: function () { removeWait(w.id).then(render); } }, ["Retirer"])
+          ])
+        ]));
+      });
+    });
 
     loadBookings().then(function (all) {
       list.innerHTML = "";
@@ -174,6 +243,19 @@
       var now = isToday ? nowMin() : -1;
       var g = granularity();
       var mine = all.filter(function (b) { return b.date === ctx.date && b.locId === ctx.locId && b.status !== "cancelled" && b.status !== "declined"; });
+
+      // Kennzahlen (Tag/Standort)
+      var orders = mine.filter(function (b) { return !b.blocker; });
+      var pizzas = orders.reduce(function (s, b) { return s + Math.max(0, b.qty || 0); }, 0);
+      var paidN = orders.filter(function (b) { return b.status === "paid"; }).length;
+      metrics.innerHTML = "";
+      [["Commandes", orders.length], ["Pizzas", pizzas], ["Payées", paidN], ["Ouvertes", orders.length - paidN]].forEach(function (m) {
+        metrics.appendChild(H("div", { class: "oc__metric" }, [H("div", { class: "oc__mval" }, [String(m[1])]), H("div", { class: "oc__mlbl" }, [m[0]])]));
+      });
+      if (isToday) {
+        var late = orders.filter(function (b) { return b.status !== "paid" && b.status !== "ready" && toMin(b.time) + Math.max(1, b.qty || 1) * perPizza() < now; });
+        if (late.length) retardBox.appendChild(H("div", { class: "oc__retard" }, ["⚠ En retard : " + late.length + " commande(s) à rattraper."]));
+      }
 
       // Belegung (Bestellung mit N Pizzen belegt N Folge-Slots)
       var grid = (E ? E.daySlots(config, { date: ctx.date, serviceId: (config.services || [{}])[0].id, locationId: ctx.locId }) : []).map(function (s) { return s.start; });
@@ -189,7 +271,7 @@
       function nowLine() { return H("div", { class: "tl__now", id: "tl-now" }, [H("span", { class: "tl__nowlbl" }, [mmToHHMM(now)]), H("span", { class: "tl__nowline" }), H("span", { class: "tl__nowdot" })]); }
 
       // Overdue-unbezahlt (Zusatzliste unten): aktive Bestellung, >3 Slots her, nicht bezahlt.
-      var overdue = mine.filter(function (b) { return !b.blocker && b.status !== "paid" && isToday && toMin(b.time) < now - 3 * g; });
+      var overdue = mine.filter(function (b) { return !b.blocker && b.status !== "paid" && b.status !== "ready" && isToday && toMin(b.time) < now - 3 * g; });
 
       if (!grid.length) { list.appendChild(H("p", { class: "ad__muted" }, ["Pas de service à cette étape ce jour-là."])); }
 
@@ -242,11 +324,16 @@
         H("div", { class: "tl__cust" }, [(b.name || "—"), b.phone ? H("a", { class: "tl__phone", href: "tel:" + String(b.phone).replace(/\s/g, "") }, [" · " + b.phone]) : H("span")]),
         b.notes && b.notes !== BLOCK ? H("div", { class: "tl__note" }, ["“" + b.notes + "”"]) : H("span")
       ]);
+      var ready = b.status === "ready";
       var payBtn = H("button", { class: "tl__pay" + (paid ? " is-paid" : ""), onclick: function () { setStatus(b.id, paid ? "confirmed" : "paid").then(render); } }, [paid ? "💰 Payé" : "💰 Payer ?"]);
-      var cls = "tl__card tl__card--order" + (o.active ? " is-active" : "") + ((o.past || paid) && !o.active ? " is-grey" : "");
+      var readyEl = ready
+        ? H("span", { class: "tl__readytag" }, ["✓ Prêt"])
+        : H("button", { class: "tl__ready", onclick: function () { setStatus(b.id, "ready").then(render); } }, ["Prêt ?"]);
+      var acts = paid ? [payBtn] : [readyEl, payBtn];
+      var cls = "tl__card tl__card--order" + (o.active ? " is-active" : "") + (ready && !o.active ? " is-ready" : "") + ((o.past || paid) && !o.active ? " is-grey" : "");
       return H("div", { class: cls }, [
         H("img", { class: "tl__thumb", src: firstImg(b.items), alt: "", onerror: function () { this.src = PIZZA_SVG; } }),
-        col, mid, H("div", { class: "tl__act" }, [payBtn])
+        col, mid, H("div", { class: "tl__act" }, acts)
       ]);
     }
 
@@ -305,7 +392,13 @@
         else { if (p.name && typeof p.name === "object") p.name.fr = nm; else p.name = { fr: nm, de: nm }; p.price = pr; saveLocalConfig(); toast("Enregistré"); }
       }
       name.addEventListener("change", saveP); price.addEventListener("change", saveP);
-      v.appendChild(H("div", { class: "ad__card" }, [H("div", { class: "ad__grid2" }, [name, price])]));
+      var alle = H("input", { class: "ad__in", value: (p.allergens || []).join(", "), placeholder: "Allergènes (gluten, lactose, œuf…)" });
+      alle.addEventListener("change", function () {
+        var arr = alle.value.split(",").map(function (s) { return s.trim(); }).filter(Boolean);
+        if (MODE === "supabase") sb.from("products").update({ allergens: arr }).eq("id", p.id).then(function () { toast("Enregistré"); });
+        else { p.allergens = arr; saveLocalConfig(); toast("Enregistré"); }
+      });
+      v.appendChild(H("div", { class: "ad__card" }, [H("div", { class: "ad__grid2" }, [name, price]), alle]));
     });
   }
 

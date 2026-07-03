@@ -83,6 +83,8 @@ create table if not exists products (
   oven        boolean default true,   -- zählt in die Ofen-Kapazität (partySize)
   price       numeric,                -- optional, vom Betreiber zu pflegen
   tags        text[] default '{}',    -- 'vegan' | 'veggie' | 'signature' | 'new'
+  allergens   text[] default '{}',    -- z.B. 'gluten','lactose','oeuf' (Lebensmittelrecht)
+  image       text,                   -- optionale Produktbild-URL
   active      boolean default true,
   sort        integer default 0
 );
@@ -136,7 +138,8 @@ create table if not exists bookings (
   items          jsonb,               -- [{id,name,qty,oven}]
   notes          text,                -- '__BLOCK__' = Pause/Blocker (keine echte Bestellung)
   reminder_channel text default 'none', -- none | email | messenger (Erinnerung 10 Min vorher)
-  status         text not null default 'pending', -- pending | confirmed | paid | declined | cancelled
+  client_ref     text,                -- Idempotenz: verhindert Doppel-Absenden
+  status         text not null default 'pending', -- pending | confirmed | ready | paid | declined | cancelled
   cancel_token   uuid default gen_random_uuid(),
   created_at     timestamptz default now()
 );
@@ -161,6 +164,9 @@ drop trigger if exists trg_slot_change on bookings;
 create trigger trg_slot_change after insert or update or delete on bookings
   for each row execute function notify_slot_change();
 do $$ begin alter publication supabase_realtime add table slot_events; exception when duplicate_object then null; end $$;
+-- bookings ebenfalls in Realtime: der eingeloggte Betreiber (Admin) bekommt so
+-- einen Ton bei neuer Bestellung. Anonyme sehen dank RLS nichts davon.
+do $$ begin alter publication supabase_realtime add table bookings; exception when duplicate_object then null; end $$;
 
 alter table slot_events enable row level security;
 drop policy if exists "public read slot_events" on slot_events;
@@ -168,6 +174,20 @@ create policy "public read slot_events" on slot_events for select to anon, authe
 grant select on slot_events to anon, authenticated;
 create index if not exists bookings_date_idx on bookings (booking_date);
 create index if not exists bookings_loc_date_idx on bookings (location_id, booking_date);
+create unique index if not exists bookings_client_ref_idx on bookings (client_ref) where client_ref is not null;
+
+-- Warteliste: wenn ein Wunschtag/Standort ausgebucht ist.
+create table if not exists waitlist (
+  id             uuid primary key default gen_random_uuid(),
+  service_id     text references services(id),
+  location_id    text references locations(id),
+  desired_date   date,
+  customer_name  text not null,
+  customer_email text not null,
+  customer_phone text,
+  status         text not null default 'waiting', -- waiting | notified | done
+  created_at     timestamptz default now()
+);
 
 -- --- Event-/Vermietungsanfragen (Louez La Légende) --------------------------
 create table if not exists event_requests (
@@ -218,6 +238,7 @@ alter table closures           enable row level security;
 alter table date_overrides     enable row level security;
 alter table bookings           enable row level security;
 alter table event_requests     enable row level security;
+alter table waitlist           enable row level security;
 alter table notifications      enable row level security;
 
 -- Öffentlich LESBARE Stammdaten (nötig für die Verfügbarkeitsberechnung + Karte).
@@ -242,6 +263,10 @@ drop policy if exists "public insert events" on event_requests;
 create policy "public insert events" on event_requests
   for insert to anon, authenticated with check (true);
 
+drop policy if exists "public insert waitlist" on waitlist;
+create policy "public insert waitlist" on waitlist
+  for insert to anon, authenticated with check (true);
+
 -- Betreiber (eingeloggt) hat Vollzugriff. Da keine Kundenkonten existieren und
 -- die Registrierung im Supabase-Projekt deaktiviert wird, ist 'authenticated'
 -- gleichbedeutend mit „der Betreiber". (Alternativ per E-Mail-Allowlist einschränken.)
@@ -251,7 +276,7 @@ begin
   foreach t in array array[
     'settings','locations','services','product_categories','products',
     'availability_rules','breaks','closures','date_overrides',
-    'bookings','event_requests','notifications'
+    'bookings','event_requests','waitlist','notifications'
   ] loop
     execute format('drop policy if exists "admin all" on %I;', t);
     execute format('create policy "admin all" on %I for all to authenticated using (true) with check (true);', t);
@@ -306,7 +331,8 @@ returns jsonb language sql stable security definer set search_path = public as $
       'id', id, 'cat', category_id,
       'name', jsonb_build_object('fr', name_fr, 'de', name_de),
       'desc', jsonb_build_object('fr', desc_fr, 'de', desc_de),
-      'oven', oven, 'price', price, 'tags', tags) order by sort), '[]'::jsonb) as arr
+      'oven', oven, 'price', price, 'tags', tags,
+      'allergens', allergens, 'image', image) order by sort), '[]'::jsonb) as arr
     from products where active
   ),
   brks as (

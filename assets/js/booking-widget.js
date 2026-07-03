@@ -25,6 +25,8 @@
       order_continue: "Continuer", order_empty: "Ajoutez au moins un article.",
       order_count_one: "pizza", order_count_many: "pizzas", order_items: "article(s)",
       time_title: "Heure de retrait", time_none: "Plus de créneau libre pour l'instant.", slot_taken: "réservé",
+      urgency: "Vite ! Plus que {n} créneaux libres.", waitlist_cta: "M'inscrire sur la liste d'attente",
+      waitlist_title: "Liste d'attente", waitlist_sub: "On vous prévient si une place se libère.", waitlist_ok: "Vous êtes sur la liste — merci !",
       details_title: "Vos coordonnées",
       f_name: "Nom", f_email: "E-mail", f_phone: "Téléphone", f_notes: "Remarque (optionnel)",
       submit: "Valider la commande", pay_note: "Paiement sur place — cash ou TWINT.",
@@ -47,6 +49,8 @@
       order_continue: "Weiter", order_empty: "Füge mindestens einen Artikel hinzu.",
       order_count_one: "Pizza", order_count_many: "Pizzen", order_items: "Artikel",
       time_title: "Abholzeit", time_none: "Aktuell kein Fenster mehr frei.", slot_taken: "belegt",
+      urgency: "Schnell! Nur noch {n} freie Fenster.", waitlist_cta: "Auf die Warteliste",
+      waitlist_title: "Warteliste", waitlist_sub: "Wir melden uns, falls ein Platz frei wird.", waitlist_ok: "Du stehst auf der Liste — danke!",
       details_title: "Deine Angaben",
       f_name: "Name", f_email: "E-Mail", f_phone: "Telefon", f_notes: "Bemerkung (optional)",
       submit: "Bestellung abschliessen", pay_note: "Zahlung vor Ort — bar oder TWINT.",
@@ -160,6 +164,7 @@
         clearSub();
         if (phase === "notify") return renderNotify();
         if (phase === "done") return renderDone();
+        if (phase === "waitlist") return renderWaitlist();
         var step = steps[i];
         if (step === "location") return renderLocation();
         if (step === "order") return renderOrder();
@@ -219,7 +224,8 @@
             var row = H("div", { class: "bce__prod" + ((state.items[p.id] || 0) > 0 ? " is-active" : "") }, [
               H("span", { class: "bce__pcol" }, [
                 H("span", { class: "bce__pname" }, [tr(p.name, lang)].concat((p.tags || []).filter(function (x) { return TAGS[x]; }).map(function (x) { return H("span", { class: "bce__tag bce__tag--" + x }, [tr(TAGS[x], lang)]); }))),
-                tr(p.desc, lang) ? H("span", { class: "bce__pdesc" }, [tr(p.desc, lang)]) : H("span")
+                tr(p.desc, lang) ? H("span", { class: "bce__pdesc" }, [tr(p.desc, lang)]) : H("span"),
+                (p.allergens && p.allergens.length) ? H("span", { class: "bce__allerg" }, [(lang === "de" ? "Allergene: " : "Allergènes : ") + p.allergens.join(", ")]) : H("span")
               ]),
               H("span", { class: "bce__stepper" }, [
                 H("button", { class: "bce__step", type: "button", "aria-label": "-", onclick: function () { setQ(-1); } }, ["−"]),
@@ -255,9 +261,14 @@
             var nowMin = new Date().getHours() * 60 + new Date().getMinutes();
             var past = [], future = [];
             grid.forEach(function (s) { ((isToday && E._util.toMin(s.start) < nowMin) ? past : future).push(s); });
+            var freeCount = future.filter(function (s) { return free[s.start]; }).length;
+            if (freeCount > 0 && freeCount <= 3) host.appendChild(H("div", { class: "bce__urgency" }, [t.urgency.replace("{n}", freeCount)]));
             past.slice(-3).forEach(function (s) { host.appendChild(slotEl(s, "past")); });
             future.forEach(function (s) { host.appendChild(slotEl(s, free[s.start] ? "free" : "taken")); });
-            if (!future.some(function (s) { return free[s.start]; })) host.appendChild(H("p", { class: "bce__empty" }, [t.time_none]));
+            if (freeCount === 0) {
+              host.appendChild(H("p", { class: "bce__empty" }, [t.time_none]));
+              host.appendChild(H("button", { class: "bce__waitbtn", type: "button", onclick: openWaitlist }, [t.waitlist_cta]));
+            }
           });
         }
         function slotEl(s, kind) {
@@ -342,6 +353,31 @@
           } }, [t.done_again])
         ]);
         shell(t.done_title, null, body, false);
+      }
+
+      function openWaitlist() { phase = "waitlist"; render(); }
+      function renderWaitlist() {
+        var err = H("p", { class: "bce__err" });
+        var form = H("form", { class: "bce__form", onsubmit: function (e) {
+          e.preventDefault();
+          var fd = new FormData(e.target);
+          var btn = e.target.querySelector("button[type=submit]"); btn.disabled = true;
+          data.addWaitlist({ serviceId: state.serviceId, locationId: state.locationId, date: state.date, name: fd.get("name"), email: fd.get("email"), phone: fd.get("phone") })
+            .then(function () {
+              shell(t.waitlist_title, null, H("div", { class: "bce__done" }, [
+                H("div", { class: "bce__check", html: "✓" }), H("p", { class: "bce__donetxt" }, [t.waitlist_ok]),
+                H("button", { class: "bce__back", type: "button", onclick: function () { phase = "steps"; render(); } }, [t.back])
+              ]), false);
+            })
+            .catch(function (ex) { err.textContent = ex.message; btn.disabled = false; });
+        } }, [
+          H("label", {}, [t.f_name, H("input", { class: "bce__in", name: "name", required: "required", value: state.customer.name || "" })]),
+          H("label", {}, [t.f_email, H("input", { class: "bce__in", name: "email", type: "email", required: "required", value: state.customer.email || "" })]),
+          H("label", {}, [t.f_phone, H("input", { class: "bce__in", name: "phone", type: "tel", value: state.customer.phone || "" })]),
+          err, H("button", { class: "bce__cta", type: "submit" }, [t.waitlist_cta])
+        ]);
+        var wrap = H("div", {}, [form, H("button", { class: "bce__back", type: "button", onclick: function () { phase = "steps"; render(); } }, [t.back])]);
+        shell(t.waitlist_title, t.waitlist_sub, wrap, false);
       }
 
       render();

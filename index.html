@@ -20,15 +20,29 @@
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "Restaurant",
+  "@type": ["Restaurant", "FoodEstablishment"],
   "name": "La Légende",
+  "description": "Food truck de pizza napolitaine cuite au feu de bois dans le Jura bernois.",
   "servesCuisine": "Pizza napolitaine",
-  "priceRange": "CHF",
+  "priceRange": "CHF 13+",
+  "currenciesAccepted": "CHF",
+  "paymentAccepted": "Cash, TWINT",
   "url": "https://www.pizzalegende.ch/",
   "email": "info@pizzalegende.ch",
   "telephone": "+41793691036",
+  "hasMenu": "https://www.pizzalegende.ch/carte.html",
+  "acceptsReservations": "True",
   "areaServed": ["Tramelan","Bienne","Corgémont","Sonceboz","Péry","Grandval","Court","Prêles"],
   "foundingDate": "2019",
+  "openingHoursSpecification": [
+    { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday"], "opens": "18:15", "closes": "20:00" },
+    { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Tuesday","Wednesday"], "opens": "11:30", "closes": "12:45" }
+  ],
+  "potentialAction": {
+    "@type": "OrderAction",
+    "target": "https://www.pizzalegende.ch/commander.html",
+    "deliveryMethod": "http://purl.org/goodrelations/v1#PickUp"
+  },
   "sameAs": ["https://www.instagram.com/lalegende_foodtruck/","https://m.facebook.com/foodtruckpizzalalegende/"]
 }
 </script>

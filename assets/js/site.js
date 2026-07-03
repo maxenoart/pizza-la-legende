@@ -113,7 +113,9 @@
           return '<span class="chip chip--' + x + '">' + tag[x][lang] + "</span>";
         }).join("");
         var desc = (p.desc && (p.desc[lang] || p.desc.fr)) ? '<p class="menu-item__desc">' + (p.desc[lang] || p.desc.fr) + "</p>" : "";
-        return '<div class="menu-item"><div class="menu-item__name">' + (p.name[lang] || p.name.fr) + chips + "</div>" + desc + "</div>";
+        var allerg = (p.allergens && p.allergens.length) ? '<p class="menu-item__allerg">' + (lang === "de" ? "Allergene: " : "Allergènes : ") + p.allergens.join(", ") + "</p>" : "";
+        var price = (p.price != null && p.price !== "") ? '<span class="menu-item__price">CHF ' + p.price + "</span>" : "";
+        return '<div class="menu-item"><div class="menu-item__name">' + (p.name[lang] || p.name.fr) + chips + price + "</div>" + desc + allerg + "</div>";
       }).join("");
       wrap.innerHTML =
         '<div class="menu-cat__head"><span class="menu-cat__title">' + (cat.name[lang] || cat.name.fr) + "</span>" + meta + "</div>" +
@@ -126,10 +128,20 @@
   // ---- Footer Jahr ---------------------------------------------------------
   function initYear() { $all("[data-year]").forEach(function (e) { e.textContent = new Date().getFullYear(); }); }
 
+  // ---- Sticky Mobile-CTA (nicht auf der Bestellseite) ----------------------
+  function initStickyCta() {
+    if (document.getElementById("book-widget") || !$(".nav") || $(".stickycta")) return;
+    var bar = document.createElement("div"); bar.className = "stickycta";
+    var a = document.createElement("a"); a.href = "commander.html";
+    a.setAttribute("data-de", "Commander maintenant"); a.textContent = "Commander maintenant";
+    bar.appendChild(a); document.body.appendChild(bar);
+  }
+
   ready(function () {
     initNav();
     initLangSwitch();
     initYear();
+    initStickyCta();
     applyLang(currentLang());   // rendert Tournée/Karte + setzt Sprache
     initReveal();
   });

@@ -49,9 +49,14 @@ Deno.serve(async (req) => {
       customer_name: p.customerName, customer_email: p.customerEmail, customer_phone: p.customerPhone ?? null,
       booking_date: p.date, start_time: p.start, end_time: p.end,
       party_size: p.partySize ?? 0, items: p.items ?? null, notes: p.notes ?? null,
+      reminder_channel: p.reminderChannel ?? "none", client_ref: p.clientRef ?? null,
       status: autoConfirm ? "confirmed" : "pending",
     }).select().single();
-    if (error) throw error;
+    if (error) {
+      // Idempotenz: gleiche client_ref → bereits gebucht, kein Fehler nach aussen.
+      if ((error as { code?: string }).code === "23505") return json({ ok: true, booking: null, duplicate: true }, 200);
+      throw error;
+    }
 
     // 4) Bestätigung senden (nur wenn Modul aktiv).
     if (config?.features?.emailNotifications) await sendConfirmation(admin, config, booking);

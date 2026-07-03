@@ -1,0 +1,13 @@
+{
+  "name": "pizza-la-legende",
+  "private": true,
+  "version": "1.0.0",
+  "description": "La Légende — Website & Bestellsystem (Food Truck, Jura bernois)",
+  "scripts": {
+    "test": "node scripts/availability.test.js && node scripts/integration.test.js",
+    "e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.45.0"
+  }
+}

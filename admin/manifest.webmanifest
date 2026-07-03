@@ -1,0 +1,14 @@
+{
+  "name": "La Légende — Admin",
+  "short_name": "Légende Admin",
+  "description": "Bestellungen, Zeitplan und Karte verwalten.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#261E17",
+  "theme_color": "#261E17",
+  "lang": "fr",
+  "icons": [
+    { "src": "../assets/img/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
